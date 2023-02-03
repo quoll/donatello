@@ -6,6 +6,8 @@
            [java.time Instant]
            [java.time.format DateTimeFormatter]))
 
+(def obj-limit 5)
+
 (defmulti serialize "Converts a simple datatype into a Turtle representation" class)
 (defmethod serialize Long [v] (str v))
 (defmethod serialize Double [v] (str v))
@@ -46,17 +48,22 @@
    property-map: A map of properties to values, or collections of values."
   [out subj property-map]
   (let [s (serialize subj)
-        sp (apply str ";\n" (repeat (inc (count s)) \space))
+        newline-indent (apply str "\n" (repeat (inc (count s)) \space))
+        sp (str ";" newline-indent)
         write-po! (fn [p o]
-                    (.write out (serialize p))
-                    (.write out " ")
-                    (if (coll? o)
-                      (let [[f & r] o]
-                        (.write out (serialize f))
-                        (doseq [o1 r]
-                          (.write out ", ")
-                          (.write out (serialize o1))))
-                      (.write out (serialize o))))]
+                    (let [pred (serialize p)]
+                      (.write out pred)
+                      (.write out " ")
+                      (if (coll? o)
+                        (let [[[f] & r] (map vector o (range))
+                              indent (apply str newline-indent (repeat (inc (count pred)) \space))]
+                          (.write out (serialize f))
+                          (doseq [[o1 n] r]
+                            (.write out ", ")
+                            (when (zero? (mod n obj-limit))
+                              (.write out indent))
+                            (.write out (serialize o1))))
+                        (.write out (serialize o)))))]
     (.write out s)
     (.write out " ")
     (let [[[p o] & props] property-map]
