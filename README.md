@@ -49,9 +49,9 @@ this will be expanded in multiple triples, using the same subject/predicate for 
 object in the collection:
 
 ```clojure
-(ttl/write-triples *out* (URI. "http://example.org/data/bambam")
-                         {:ex/parent #{(URL. "http://example.org/data/wilma")
-                                       (URL. "http://example.org/data/fred")}})
+(ttl/write-triples! *out* (URI. "http://example.org/data/bambam")
+                          {:ex/parent #{(URL. "http://example.org/data/wilma")
+                                        (URL. "http://example.org/data/fred")}})
 ```
 
 This will create an output of:
