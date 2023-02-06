@@ -1,4 +1,4 @@
-# donatello/ttl
+# Donatello
 
 A small library for writing TTL files.
 
