@@ -64,6 +64,11 @@ Consequently, the keyword `:ex/parent` is emitted without awareness that there i
 no prefix describing the `ex` namespace. Similarly, even if the prefix for `ex` had
 been included, there is no attempt to convert URIs/URLs into a QName format.
 
+## TODO
+- Passing maps in the subject or object position should result in a blank node with predicate/object pairs.
+- Passing sequential values in the subject or object positions should create a `rdf:List`.
+- Create limits for the above (possibly based on string width, but probably just use a max count per line).
+
 ## License
 
 Copyright © 2023 Paula Gearon
