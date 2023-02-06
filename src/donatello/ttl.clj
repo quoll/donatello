@@ -82,11 +82,15 @@
   (doseq [[subj props] mp]
     (write-triples! out subj props)))
 
+(def skip-iri-chars #"[,._=\";:<>()^!@#$%&-+]")
+(def bad-iri-chars #"['*]")
+
 (defn camel-case
   "Converts a string into a CamelCase variation"
   [s]
   (let [parts (-> s
-                  (s/replace #"[,._-]" "")
+                  (s/replace bad-iri-chars "")
+                  (s/replace skip-iri-chars " ")
                   (s/split #" +"))]
     (apply str (map s/capitalize parts))))
 
@@ -94,7 +98,8 @@
   "Converts a string into a camelCase variation that starts with the lower-case character."
   [s]
   (let [[fpart & rparts] (-> s
-                             (s/replace #"[,._-]" "")
+                             (s/replace bad-iri-chars "")
+                             (s/replace skip-iri-chars " ")
                              (s/split #" +"))]
     (apply str (s/lower-case fpart) (map s/capitalize rparts))))
 
