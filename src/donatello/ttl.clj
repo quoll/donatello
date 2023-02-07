@@ -3,10 +3,12 @@
             [clojure.string :as s])
   (:import [java.net URL URI]
            [java.util Date]
-           [java.time Instant]
+           [java.time Instant LocalDate]
            [java.time.format DateTimeFormatter]))
 
 (def obj-limit 5)
+
+(def ^:dynamic *include-defaults* true)
 
 (defmulti serialize "Converts a simple datatype into a Turtle representation" class)
 (defmethod serialize Long [v] (str v))
@@ -17,6 +19,7 @@
 (defmethod serialize URL [v] (str "<" v ">"))
 (defmethod serialize Date [v] (str \" (.format DateTimeFormatter/ISO_INSTANT (.toInstant v)) "\"^^<xsd:dateTime>"))
 (defmethod serialize Instant [v] (str \" (.format DateTimeFormatter/ISO_INSTANT v) "\"^^<xsd:dateTime>"))
+(defmethod serialize LocalDat [v] (str \" (.format DateTimeFormatter/ISO_INSTANT v) "\"^^<xsd:date>"))
 
 (defmethod serialize clojure.lang.Keyword
   [v]
@@ -30,12 +33,18 @@
    mp: a map where keys are either strings or keywords for a localname,
        and values are strings containing the full namespace."
   [out mp]
-  (doseq [[l p] mp]
-    (.write out "@prefix ")
-    (.write out (name l))
-    (.write out ": <")
-    (.write out (str p))
-    (.write out "> .\n"))
+  (let [mpx (if *include-defaults*
+              (cond-> mp
+                (nil? (:rdf mp)) (assoc :rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+                (nil? (:rdfs mp)) (assoc :rdfs "http://www.w3.org/2000/01/rdf-schema#")
+                (nil? (:xsd mp)) (assoc :xsd "http://www.w3.org/2001/XMLSchema#"))
+              mp)]
+    (doseq [[l p] mpx]
+      (.write out "@prefix ")
+      (.write out (name l))
+      (.write out ": <")
+      (.write out (str p))
+      (.write out "> .\n")))
   (.write out "\n"))
 
 (defn write-triples!
