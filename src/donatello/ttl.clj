@@ -19,7 +19,7 @@
 (defmethod serialize URL [v] (str "<" v ">"))
 (defmethod serialize Date [v] (str \" (.format DateTimeFormatter/ISO_INSTANT (.toInstant v)) "\"^^<xsd:dateTime>"))
 (defmethod serialize Instant [v] (str \" (.format DateTimeFormatter/ISO_INSTANT v) "\"^^<xsd:dateTime>"))
-(defmethod serialize LocalDat [v] (str \" (.format DateTimeFormatter/ISO_INSTANT v) "\"^^<xsd:date>"))
+(defmethod serialize LocalDate [v] (str \" (.format DateTimeFormatter/ISO_DATE v) "\"^^<xsd:date>"))
 
 (defmethod serialize clojure.lang.Keyword
   [v]
