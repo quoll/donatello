@@ -11,6 +11,7 @@
 (defmulti serialize "Converts a simple datatype into a Turtle representation" class)
 (defmethod serialize Long [v] (str v))
 (defmethod serialize Double [v] (str v))
+(defmethod serialize Boolean [v] (str v))
 (defmethod serialize String [v] (str \" (s/replace v "\"" "\\\"") \"))
 (defmethod serialize URI [v] (str "<" v ">"))
 (defmethod serialize URL [v] (str "<" v ">"))
