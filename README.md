@@ -1,6 +1,13 @@
-# donatello/ttl
+# Donatello
 
 A small library for writing TTL files.
+
+### deps.edn
+Add the following dependency to the `:deps` map in `deps.edn`:
+
+```clojure
+io.github.quoll/donatello {:git/tag "v0.0.1" :git/sha "38a9153"}
+```
 
 ## Usage
 
@@ -63,6 +70,16 @@ Note how the output is unaware that no prefix map has been emitted on this strea
 Consequently, the keyword `:ex/parent` is emitted without awareness that there is
 no prefix describing the `ex` namespace. Similarly, even if the prefix for `ex` had
 been included, there is no attempt to convert URIs/URLs into a QName format.
+
+## TODO
+Immediate plans:
+- Passing maps in the subject or object position should result in a blank node with predicate/object pairs.
+- Passing sequential values in the subject or object positions should create a `rdf:List`.
+- Create limits for the above (possibly based on string width, but probably just use a max count per line).
+
+Future ideas:
+- Scanning URIs/URLs for known namespaces and converting to QNames.
+- Defining a protocol/interface for blank nodes to be emitted.
 
 ## License
 
