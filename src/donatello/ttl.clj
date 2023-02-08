@@ -10,6 +10,9 @@
 
 (def ^:dynamic *include-defaults* true)
 
+(defrecord TypedLiteral [text type])
+(defn typed-literal [text type] (->TypedLiteral text type))
+
 (defmulti serialize "Converts a simple datatype into a Turtle representation" class)
 (defmethod serialize Long [v] (str v))
 (defmethod serialize Double [v] (str v))
@@ -20,6 +23,7 @@
 (defmethod serialize Date [v] (str \" (.format DateTimeFormatter/ISO_INSTANT (.toInstant v)) "\"^^<xsd:dateTime>"))
 (defmethod serialize Instant [v] (str \" (.format DateTimeFormatter/ISO_INSTANT v) "\"^^<xsd:dateTime>"))
 (defmethod serialize LocalDate [v] (str \" (.format DateTimeFormatter/ISO_DATE v) "\"^^<xsd:date>"))
+(defmethod serialize TypedLiteral [{:keys [text type]}] (str \" (s/replace text "\"" "\\\"") "\"^^" (serialize type)))
 
 (defmethod serialize clojure.lang.Keyword
   [v]
