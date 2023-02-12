@@ -102,7 +102,7 @@ of the following namespaces if they are not already defined:
 - rdfs
 - xsd
 
-This can be overridden by binding `*include-defaults* to `false` before calling `write-prefixes!`:
+This can be overridden by binding `*include-defaults*` to `false` before calling `write-prefixes!`:
 
 ```clojure
 (binding [ttl/*include-defaults* false]
