@@ -1,7 +1,8 @@
 (ns donatello.ttl
   (:require [clojure.java.io :as io]
             [clojure.string :as s])
-  (:import [java.net URL URI]
+  (:import [java.io Writer]
+           [java.net URL URI]
            [java.util Date]
            [java.time Instant LocalDate]
            [java.time.format DateTimeFormatter]))
@@ -10,8 +11,35 @@
 
 (def ^:dynamic *include-defaults* true)
 
+#_(def skip-iri-chars #"[,._=\";:\[\]<>()/^!@#$%&-+]")
+(def skip-iri-chars #"[^0-9a-zA-Z]")
+(def bad-iri-chars #"['*]")
+
+(defn camel-case
+  "Converts a string into a CamelCase variation"
+  [s]
+  (let [parts (-> s
+                  (s/replace bad-iri-chars "")
+                  (s/replace skip-iri-chars " ")
+                  (s/split #" +"))]
+    (apply str (map s/capitalize parts))))
+
+(defn lower-camel-case
+  "Converts a string into a camelCase variation that starts with the lower-case character."
+  [s]
+  (let [[fpart & rparts] (-> s
+                             (s/replace bad-iri-chars "")
+                             (s/replace skip-iri-chars " ")
+                             (s/split #" +"))]
+    (apply str (s/lower-case fpart) (map s/capitalize rparts))))
+
+
+;; An object to wrapping the components of a Typed Literal
 (defrecord TypedLiteral [text type])
 (defn typed-literal [text type] (->TypedLiteral text type))
+
+(defrecord LangLiteral [text lang])
+(defn lang-literal [text lang] (->LangLiteral text lang))
 
 (defmulti serialize "Converts a simple datatype into a Turtle representation" class)
 (defmethod serialize Long [v] (str v))
@@ -24,8 +52,9 @@
 (defmethod serialize Instant [v] (str \" (.format DateTimeFormatter/ISO_INSTANT v) "\"^^<xsd:dateTime>"))
 (defmethod serialize LocalDate [v] (str \" (.format DateTimeFormatter/ISO_DATE v) "\"^^<xsd:date>"))
 (defmethod serialize TypedLiteral [{:keys [text type]}] (str \" (s/replace text "\"" "\\\"") "\"^^" (serialize type)))
+(defmethod serialize LangLiteral [{:keys [text lang]}] (str \" (s/replace text "\"" "\\\"") "\"@" (str lang)))
 
-(defmethod serialize clojure.lang.Keyword
+(defmethod ^String serialize clojure.lang.Keyword
   [v]
   (if-let [lns (namespace v)]
     (str lns ":" (name v))
@@ -36,7 +65,7 @@
    out: The output stream to write to.
    mp: a map where keys are either strings or keywords for a localname,
        and values are strings containing the full namespace."
-  [out mp]
+  [^Writer out mp]
   (let [mpx (if *include-defaults*
               (cond-> mp
                 (nil? (:rdf mp)) (assoc :rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
@@ -60,7 +89,7 @@
    out: The output stream to write to.
    subj: The subject to write triples for.
    property-map: A map of properties to values, or collections of values."
-  [out subj property-map]
+  [^Writer out subj property-map]
   (let [s (serialize subj)
         newline-indent (apply str "\n" (repeat (inc (count s)) \space))
         sp (str ";" newline-indent)
@@ -87,33 +116,25 @@
         (write-po! p o))))
   (.write out ".\n\n"))
 
+(defn write-triple!
+  "Writes a single triple to the output stream.
+   out: The output stream to write to.
+   subj: The subject of the triple.
+   pred: The predicate of the triple.
+   obj: The object of the triple."
+  [^Writer out subj pred obj]
+  (.write out (serialize subj))
+  (.write out (int \space))
+  (.write out (serialize pred))
+  (.write out (int \space))
+  (.write out (serialize obj))
+  (.write out ".\n"))
+
 (defn write-triples-map!
   "Writes to a stream a nested map of subjects to maps of predicates to objects.
    Objects may be individuals or collections.
    out: The output stream to write to.
    mp: A map of subjects to property/value maps."
-  [out mp]
+  [^Writer out mp]
   (doseq [[subj props] mp]
     (write-triples! out subj props)))
-
-(def skip-iri-chars #"[,._=\";:<>()^!@#$%&-+]")
-(def bad-iri-chars #"['*]")
-
-(defn camel-case
-  "Converts a string into a CamelCase variation"
-  [s]
-  (let [parts (-> s
-                  (s/replace bad-iri-chars "")
-                  (s/replace skip-iri-chars " ")
-                  (s/split #" +"))]
-    (apply str (map s/capitalize parts))))
-
-(defn lower-camel-case
-  "Converts a string into a camelCase variation that starts with the lower-case character."
-  [s]
-  (let [[fpart & rparts] (-> s
-                             (s/replace bad-iri-chars "")
-                             (s/replace skip-iri-chars " ")
-                             (s/split #" +"))]
-    (apply str (s/lower-case fpart) (map s/capitalize rparts))))
-
