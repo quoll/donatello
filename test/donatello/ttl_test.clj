@@ -72,8 +72,7 @@
   (testing "Writing entities"
     (is (= ["5" 1] (write #'ttl/write-entity! 5)))
     (is (= ["5.0" 3] (write #'ttl/write-entity! 5.0)))
-    (is (= ["(:ex \"a\" 5)" 11] (write #'ttl/write-entity! [:ex "a" 5])))
-    ))
+    (is (= ["(:ex \"a\" 5)" 11] (write #'ttl/write-entity! [:ex "a" 5])))))
 
 (deftest test-po
   (testing "Internal method of predicate/object(s) pairs"

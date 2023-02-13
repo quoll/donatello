@@ -111,7 +111,7 @@
   (.write out "\n"))
 
 
-(declare write-entity! write-po!)
+(declare write-entity! write-po! write-blank-object!)
 
 (defn- write-list!
   "Writes a sequence as an rdf:List object.
@@ -136,6 +136,35 @@
             (.write out (int \)))
             (inc last-width)))))))
 
+(defn- write-short-anon
+  "Writes a short anonymous object. The first [ character has already been written."
+  [^Writer out obj indent]
+  (let [[[p o] & r] obj
+        pred (serialize p)]
+    (.write out pred)
+    (.write out (int \space))
+    (let [ob-len (if (map? o)
+                   (write-blank-object! out o 0)
+                   (let [ob (serialize o)]
+                     (.write out ob)
+                     (count ob)))
+          n (+ indent 2 (count pred) ob-len)]
+      (loop [[[np no :as npo] & nr] r ind n]
+        (if npo
+          (let [nps (serialize np)]
+            (.write out "; ")
+            (.write out nps)
+            (.write out (int \space))
+            (let [nos-len (if (map? no)
+                            (write-blank-object! out no 0)
+                            (let [nos (serialize no)]
+                              (.write out nos)
+                              (count nos)))]
+              (recur nr (+ ind 3 (count nps) nos-len))))
+          (do
+            (.write out (int \]))
+            (inc ind)))))))
+
 (defn- write-blank-object!
   "Writes a blank node in square brackets.
    Short embedded blank node objects will be serialized inline without using newlines.
@@ -143,37 +172,14 @@
   [^Writer out obj indent]
   (.write out (int \[))
   (cond
+    ;; Short circuit empty nodes
     (empty? obj)
     (do
       (.write out (int \]))
       (+ indent 2))
 
-    (simple-seq? (vals obj))
-    (let [[[p o] & r] obj
-          pred (serialize p)]
-      (.write out pred)
-      (.write out (int \space))
-      (let [ob-len (if (map? o)
-                     (write-blank-object! out o 0)
-                     (let [ob (serialize o)]
-                       (.write out ob)
-                       (count ob)))
-            n (+ indent 2 (count pred) ob-len)]
-        (loop [[[np no :as npo] & nr] r ind n]
-          (if npo
-            (let [nps (serialize np)]
-              (.write out "; ")
-              (.write out nps)
-              (.write out (int \space))
-              (let [nos-len (if (map? no)
-                              (write-blank-object! out no 0)
-                              (let [nos (serialize no)]
-                                (.write out nos)
-                                (count nos)))]
-                (recur nr (+ ind 3 (count nps) nos-len))))
-            (do
-              (.write out (int \]))
-              (inc ind))))))
+    ;; small nodes will be inlined without newline characters
+    (simple-seq? (vals obj)) (write-short-anon out obj indent)
 
     :default
     (let [indent (inc indent)
