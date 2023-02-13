@@ -7,11 +7,11 @@
            [java.time Instant LocalDate]
            [java.time.format DateTimeFormatter]))
 
-(def obj-limit 5)
+(def list-limit 5)
+(def embedded-limit 2)
 
 (def ^:dynamic *include-defaults* true)
 
-#_(def skip-iri-chars #"[,._=\";:\[\]<>()/^!@#$%&-+]")
 (def skip-iri-chars #"[^0-9a-zA-Z]")
 (def bad-iri-chars #"['*]")
 
@@ -33,11 +33,41 @@
                              (s/split #" +"))]
     (apply str (s/lower-case fpart) (map s/capitalize rparts))))
 
+(def complex?
+  "A defined set of the built-in collection types in Clojure. This is a hack to avoid reflection."
+  #{clojure.lang.PersistentList$EmptyList
+    clojure.lang.PersistentList
+    clojure.lang.Cons
+    clojure.lang.LazySeq
+    clojure.lang.PersistentVector
+    clojure.lang.PersistentHashSet
+    clojure.lang.PersistentTreeSet
+    clojure.lang.PersistentArrayMap
+    clojure.lang.PersistentHashMap})
+
+(defn scalar?
+  "Is an object scalar or complex?"
+  [s]
+  (not (complex? (class s))))
+
+(defn scalar-seq?
+  "Tests if a seq contains elements that are scalar and not complex"
+  [s]
+  (not (some complex? (map class s))))
+
+(defn simple-seq?
+  "Tests if a seq contains elements that are scalar or short embeded objects"
+  [s]
+  (every? #(or (scalar? %)
+               (and (map? %)
+                    (<= (count %) embedded-limit)
+                    (every? scalar? (vals %)))) s))
 
 ;; An object to wrapping the components of a Typed Literal
 (defrecord TypedLiteral [text type])
 (defn typed-literal [text type] (->TypedLiteral text type))
 
+;; An object to wrapping the components of a Language tagged Literal
 (defrecord LangLiteral [text lang])
 (defn lang-literal [text lang] (->LangLiteral text lang))
 
@@ -80,40 +110,144 @@
       (.write out "> .\n")))
   (.write out "\n"))
 
+
+(declare write-entity! write-po!)
+
+(defn- write-list!
+  "Writes a sequence as an rdf:List object.
+   Returns the width of the final line."
+  [^Writer out lst indent]
+  (.write out (int \())
+  (if-not (seq lst)
+    (do
+      (.write out \))
+      (+ indent 2))
+    (let [width (if (scalar-seq? lst) list-limit 1)
+          indent (inc indent)
+          next-line (apply str \newline (repeat indent \space))
+          first-width (write-entity! out (first lst))]
+      (loop [[e & r] (rest lst) line-nr 1 last-width (+ indent first-width)]
+        (if e
+          (let [in (if (zero? (mod line-nr width))
+                     (do (.write out next-line) indent)
+                     (do (.write out (int \space)) (inc last-width)))]
+            (recur r (inc line-nr) (write-entity! out e in)))
+          (do
+            (.write out (int \)))
+            (inc last-width)))))))
+
+(defn- write-blank-object!
+  "Writes a blank node in square brackets.
+   Short embedded blank node objects will be serialized inline without using newlines.
+   Returns the indent from the final line"
+  [^Writer out obj indent]
+  (.write out (int \[))
+  (cond
+    (empty? obj)
+    (do
+      (.write out (int \]))
+      (+ indent 2))
+
+    (simple-seq? (vals obj))
+    (let [[[p o] & r] obj
+          pred (serialize p)]
+      (.write out pred)
+      (.write out (int \space))
+      (let [ob-len (if (map? o)
+                     (write-blank-object! out o 0)
+                     (let [ob (serialize o)]
+                       (.write out ob)
+                       (count ob)))
+            n (+ indent 2 (count pred) ob-len)]
+        (loop [[[np no :as npo] & nr] r ind n]
+          (if npo
+            (let [nps (serialize np)]
+              (.write out "; ")
+              (.write out nps)
+              (.write out (int \space))
+              (let [nos-len (if (map? no)
+                              (write-blank-object! out no 0)
+                              (let [nos (serialize no)]
+                                (.write out nos)
+                                (count nos)))]
+                (recur nr (+ ind 3 (count nps) nos-len))))
+            (do
+              (.write out (int \]))
+              (inc ind))))))
+
+    :default
+    (let [indent (inc indent)
+          sp (apply str ";\n" (repeat indent \space))
+          [[p o] & props] obj
+          line-width (write-po! out p o indent)]
+      (loop [[[p o :as po] & r] props last-width line-width]
+        (if po
+          (do
+            (.write out sp)
+            (recur r (write-po! out p o indent)))
+          (do
+            (.write out (int \]))
+            (inc last-width)))))))
+
+(defn- write-entity!
+  "Writes an entity to the output stream. Returns the width of the final line.
+   out: The output stream to write to.
+   subj: The subject to seralize and write.
+   indent: The initial indent width to use."
+  ([out subj] (write-entity! out subj 0))
+  ([^Writer out subj indent]
+   (cond
+     (scalar? subj) (let [s (serialize subj)]
+                      (.write out s)
+                      (+ indent (count s)))
+     (sequential? subj) (write-list! out subj indent)
+     (map? subj) (write-blank-object! out subj indent)
+     :default (throw (ex-info (str "Unexpected data type for subject: " (class subj)) {:subject subj})))))
+
+(defn- write-po!
+  "Writes a predicate/object(s) pairing.
+   Returns the indent of the final line."
+  [out p o ind]
+  (let [pred (serialize p)
+        pwidth (count pred)]
+    (.write out pred)
+    (.write out " ")
+    (if (set? o)
+      (let [[f & r] o 
+            pwidth (count pred)
+            indent (+ ind pwidth 1)
+            indent-str (apply str \newline (repeat indent \space))
+            in (write-entity! out f indent)]
+        (loop [[o1 & r1] r ocount 1 last-indent in]
+          (if o1
+            (do
+              (.write out (int \,))
+              (let [n (if (zero? (mod ocount list-limit))
+                        (do (.write out indent-str) indent)
+                        (do (.write out (int \space)) (+ 2 last-indent)))]
+                (recur r1 (inc ocount) (write-entity! out o1 n))))
+            last-indent)))
+      (write-entity! out o (+ ind pwidth 1)))))
+
 (defn write-triples!
   "Writes the triples for a single subject, as a group.
    The subject is provided as a single element, and the property/values are provided as a map.
    The map contains predicates as keys, and objects as values. If a value is a collection
    then this will be emitted as multiple values with the same property.
-   NOTE: Does not yet support blank nodes. TODO.
    out: The output stream to write to.
    subj: The subject to write triples for.
    property-map: A map of properties to values, or collections of values."
   [^Writer out subj property-map]
-  (let [s (serialize subj)
-        newline-indent (apply str "\n" (repeat (inc (count s)) \space))
-        sp (str ";" newline-indent)
-        write-po! (fn [p o]
-                    (let [pred (serialize p)]
-                      (.write out pred)
-                      (.write out " ")
-                      (if (coll? o)
-                        (let [[[f] & r] (map vector o (range))
-                              indent (apply str newline-indent (repeat (inc (count pred)) \space))]
-                          (.write out (serialize f))
-                          (doseq [[o1 n] r]
-                            (.write out ", ")
-                            (when (zero? (mod n obj-limit))
-                              (.write out indent))
-                            (.write out (serialize o1))))
-                        (.write out (serialize o)))))]
-    (.write out s)
+  (let [w (write-entity! out subj)
+        newline-indent (apply str \newline (repeat (inc w) \space))
+        sp (str ";" newline-indent)]
     (.write out " ")
-    (let [[[p o] & props] property-map]
-      (write-po! p o)
+    (let [indent (inc w)
+          [[p o] & props] property-map]
+      (write-po! out p o indent)
       (doseq [[p o] props]
         (.write out sp)
-        (write-po! p o))))
+        (write-po! out p o indent))))
   (.write out ".\n\n"))
 
 (defn write-triple!
@@ -123,6 +257,10 @@
    pred: The predicate of the triple.
    obj: The object of the triple."
   [^Writer out subj pred obj]
+  (when-not (and (scalar? subj) (scalar? pred) (scalar? obj))
+    (throw (ex-info "write-triple! should not be passed complex types" {:subject subj
+                                                                        :predicate pred
+                                                                        :object obj})))
   (.write out (serialize subj))
   (.write out (int \space))
   (.write out (serialize pred))
