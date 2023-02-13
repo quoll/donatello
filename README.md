@@ -6,7 +6,7 @@ A small library for writing TTL files.
 Add the following dependency to the `:deps` map in `deps.edn`:
 
 ```clojure
-io.github.quoll/donatello {:git/tag "v0.0.5" :git/sha "27bc57a"}
+io.github.quoll/donatello {:git/tag "v0.0.5" :git/sha "6b2e0b5"}
 ```
 
 ## Usage
@@ -78,14 +78,14 @@ no prefix describing the `ex` namespace. Similarly, even if the prefix for `ex` 
 been included, there is no attempt to convert URIs/URLs into a QName format.
 
 ## Functions
-`write-prefixes` - Writes a map of keywords to string forms of full IRIs to an output stream. Includes default namespaces.
-`write-triple!` - Writes a single triple to an output stream.
-`write-triples!` - Writes all the triples for a single subject with a map of property/values to an output stream.
-`write-triples-map!` - Writes an entire nested map as a stream of triples to an output stream.
-`typed-literal` - Creates a literal out of a lexical representation and its datatype IRI.
-`lang-literal` - Creates a language literal out of a lexical representation and it language string.
-`camel-case` - Converts a string into a CamelCase form suitable for class IRIs.
-`lower-camel-case` - Converts a string into a lowerCamerCase form suitable for predicate IRIs.
+- `write-prefixes` - Writes a map of keywords to string forms of full IRIs to an output stream. Includes default namespaces.
+- `write-triple!` - Writes a single triple to an output stream.
+- `write-triples!` - Writes all the triples for a single subject with a map of property/values to an output stream.
+- `write-triples-map!` - Writes an entire nested map as a stream of triples to an output stream.
+- `typed-literal` - Creates a literal out of a lexical representation and its datatype IRI.
+- `lang-literal` - Creates a language literal out of a lexical representation and it language string.
+- `camel-case` - Converts a string into a CamelCase form suitable for class IRIs.
+- `lower-camel-case` - Converts a string into a lowerCamerCase form suitable for predicate IRIs.
 
 ## Serializing
 Various data types will be serialized appropriately:
@@ -102,7 +102,7 @@ of the following namespaces if they are not already defined:
 - rdfs
 - xsd
 
-This can be overridden by binding `*include-defaults* to `false` before calling `write-prefixes!`:
+This can be overridden by binding `*include-defaults*` to `false` before calling `write-prefixes!`:
 
 ```clojure
 (binding [ttl/*include-defaults* false]
