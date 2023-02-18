@@ -71,6 +71,16 @@
 (defrecord LangLiteral [text lang])
 (defn lang-literal [text lang] (->LangLiteral text lang))
 
+(defrecord BlankNode [id])
+
+(let [counter (atom 0)]
+  (def ^:private labelled-blank-node
+    (memoize (fn [label] (->BlankNode (swap! counter inc)))))
+
+  (defn blank-node
+    ([] (->BlankNode (swap! counter inc)))
+    ([label] (labelled-blank-node label))))
+
 (defmulti serialize "Converts a simple datatype into a Turtle representation" class)
 (defmethod serialize Long [v] (str v))
 (defmethod serialize Double [v] (str v))
@@ -83,6 +93,7 @@
 (defmethod serialize LocalDate [v] (str \" (.format DateTimeFormatter/ISO_DATE v) "\"^^<xsd:date>"))
 (defmethod serialize TypedLiteral [{:keys [text type]}] (str \" (s/replace text "\"" "\\\"") "\"^^" (serialize type)))
 (defmethod serialize LangLiteral [{:keys [text lang]}] (str \" (s/replace text "\"" "\\\"") "\"@" (str lang)))
+(defmethod serialize BlankNode [{:keys [id]}] (str "_:b" id))
 
 (defmethod ^String serialize clojure.lang.Keyword
   [v]
@@ -108,7 +119,7 @@
       (.write out ": <")
       (.write out (str p))
       (.write out "> .\n")))
-  (.write out "\n"))
+  (.write out (int \newline)))
 
 
 (declare write-entity! write-po! write-blank-object!)
@@ -120,7 +131,7 @@
   (.write out (int \())
   (if-not (seq lst)
     (do
-      (.write out \))
+      (.write out (int \)))
       (+ indent 2))
     (let [width (if (scalar-seq? lst) list-limit 1)
           indent (inc indent)
@@ -136,8 +147,9 @@
             (.write out (int \)))
             (inc last-width)))))))
 
-(defn- write-short-anon
-  "Writes a short anonymous object. The first [ character has already been written."
+(defn- write-short-anon!
+  "Writes a short anonymous object. The first [ character has already been written.
+   Returns the length of the written text incremented to include the previously written [ character."
   [^Writer out obj indent]
   (let [[[p o] & r] obj
         pred (serialize p)]
@@ -179,7 +191,7 @@
       (+ indent 2))
 
     ;; small nodes will be inlined without newline characters
-    (simple-seq? (vals obj)) (write-short-anon out obj indent)
+    (simple-seq? (vals obj)) (write-short-anon! out obj indent)
 
     :default
     (let [indent (inc indent)
@@ -247,7 +259,7 @@
   (let [w (write-entity! out subj)
         newline-indent (apply str \newline (repeat (inc w) \space))
         sp (str ";" newline-indent)]
-    (.write out " ")
+    (.write out (int \space))
     (let [indent (inc w)
           [[p o] & props] property-map]
       (write-po! out p o indent)

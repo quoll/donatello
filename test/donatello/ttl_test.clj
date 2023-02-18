@@ -25,7 +25,9 @@
     (is (= "\"-26.84372,150.54195\"^^<http://quoll.clojars.org/geo>"
            (serialize (ttl/typed-literal "-26.84372,150.54195" (URL. "http://quoll.clojars.org/geo")))))
     (is (= "\"chat\"@fr"
-           (serialize (ttl/lang-literal "chat" "fr"))))))
+           (serialize (ttl/lang-literal "chat" "fr"))))
+    (is (re-find #"^_:b[0-9]+$" (serialize (ttl/blank-node))))
+    (is (re-find #"^_:b[0-9]+$" (serialize (ttl/blank-node "x"))))))
 
 (deftest test-camel-case
   (testing "Converting ascii text strings to CamelCase"
@@ -34,6 +36,12 @@
     (is (= "XMg01mgMg" (ttl/camel-case "[_X/mg]; [0.1mg/mg].")))
     (is (= "goodbyeCruelWorld"
            (ttl/lower-camel-case "Goodbye, cruel world! \ud83d\ude29"))))) ;; The "Weary" face emoticon
+
+(deftest test-blank
+  (testing "If blank nodes are consistently different or the same when requested"
+    (is (= (ttl/blank-node "x") (ttl/blank-node "x")))
+    (is (not= (ttl/blank-node "x") (ttl/blank-node "y")))
+    (is (not= (ttl/blank-node) (ttl/blank-node)))))
 
 (defn write
   [f & args]
@@ -47,16 +55,15 @@
 
 (deftest blank-object
   (testing "Writes out an anonymous object"
-    (let [[s0 w0] (write #(#'ttl/write-blank-object! %1 %2 %3) {} 0)
-          [s1 w1] (write #(#'ttl/write-blank-object! %1 %2 %3)
+    (let [[s0 w0] (write #'ttl/write-blank-object! {} 0)
+          [s1 w1] (write #'ttl/write-blank-object!
                          {:p1 5, :a/p2 #{"t1" "t2"}, (URI. "http://ugh.com/") 11} 0)
-          [s2 w2] (write #(#'ttl/write-blank-object! %1 %2 %3)
+          [s2 w2] (write #'ttl/write-blank-object!
                          {:p1 5, :a/p2 #{"t1" "t2"}, (URI. "http://ugh.com/") 11} 3)
-          [s3 w3] (write #(#'ttl/write-blank-object! %1 %2 %3)
+          [s3 w3] (write #'ttl/write-blank-object!
                          {:p1 {}, :a/p2 #{{:x/y 4} "t2"}, :a/c 11} 0)
-          [s4 w4] (write #(#'ttl/write-blank-object! %1 %2 %3)
-                         {:p1 {}, :a/p2 #{{:x/y 4} {:x/y 5 :x/z 6}}, :a/c 11} 0)
-          ]
+          [s4 w4] (write #'ttl/write-blank-object!
+                         {:p1 {}, :a/p2 #{{:x/y 4} {:x/y 5 :x/z 6}}, :a/c 11} 0)]
       (is (= "[]" s0))
       (is (= 2 w0))
       (is (= "[:p1 5;\n a:p2 \"t1\", \"t2\";\n <http://ugh.com/> 11]" s1))
@@ -107,6 +114,60 @@
       (is (= 29 w5))
       (is (= ":p1 (\"a\" \"b\")" s6))
       (is (= 16 w6)))))
+
+(deftest test-list
+  (testing "Test the list output"
+    (let [[s0 w0] (write #'ttl/write-list! '(1 2 3) 0)
+          [s1 w1] (write #'ttl/write-list! '() 0)
+          [s2 w2] (write #'ttl/write-list! '({:b 1} {:c "x"}) 0)
+          [s3 w3] (write #'ttl/write-list! '((1 2) ("x" "y")) 0)
+          [s4 w4] (write #'ttl/write-list! '(1 2 3 4 5 6) 0)
+          [s5 w5] (write #'ttl/write-list! '(1 2 3) 2)
+          [s6 w6] (write #'ttl/write-list! '() 2)
+          [s7 w7] (write #'ttl/write-list! '({:b 1} {:c "x"}) 2)
+          [s8 w8] (write #'ttl/write-list! '((1 2) ("x" "y")) 2)
+          [s9 w9] (write #'ttl/write-list! '(1 2 3 4 5 6) 2)]
+      (is (= "(1 2 3)" s0))
+      (is (= 7 w0))
+      (is (= "()" s1))
+      (is (= 2 w1))
+      (is (= "([:b 1]\n [:c \"x\"])" s2))
+      (is (= 10 w2))
+      (is (= "((1 2)\n (\"x\" \"y\"))" s3))
+      (is (= 11 w3))
+      (is (= "(1 2 3 4 5\n 6)" s4))
+      (is (= 3 w4))
+      (is (= "(1 2 3)" s5))
+      (is (= 9 w5))
+      (is (= "()" s6))
+      (is (= 4 w6))
+      (is (= "([:b 1]\n   [:c \"x\"])" s7))
+      (is (= 12 w7))
+      (is (= "((1 2)\n   (\"x\" \"y\"))" s8))
+      (is (= 13 w8))
+      (is (= "(1 2 3 4 5\n   6)" s9))
+      (is (= 5 w9)))))
+
+(deftest test-short-anon
+  (testing "Test the short anonymous object"
+    (let [[s0 w0] (write #'ttl/write-short-anon! {:x 1} 0)
+          [s1 w1] (write #'ttl/write-short-anon! {:a/x 1 :a/y "2"} 0)
+          [s2 w2] (write #'ttl/write-short-anon! {:a/x 1 :a/y "2" :a/z :b/b} 0)
+          [s3 w3] (write #'ttl/write-short-anon! {:x 1} 2)
+          [s4 w4] (write #'ttl/write-short-anon! {:a/x 1 :a/y "2"} 2)
+          [s5 w5] (write #'ttl/write-short-anon! {:a/x 1 :a/y "2" :a/z :b/b} 2)]
+      (is (= ":x 1]" s0))
+      (is (= 6 w0))
+      (is (= "a:x 1; a:y \"2\"]" s1))
+      (is (= 16 w1))
+      (is (= "a:x 1; a:y \"2\"; a:z b:b]" s2))
+      (is (= 25 w2))
+      (is (= ":x 1]" s3))
+      (is (= 8 w3))
+      (is (= "a:x 1; a:y \"2\"]" s4))
+      (is (= 18 w4))
+      (is (= "a:x 1; a:y \"2\"; a:z b:b]" s5))
+      (is (= 27 w5)))))
 
 (def default-ns "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n")
 (def p1 "@prefix ns1: <http://demo.org/ns1/> .\n@prefix ns2: <http://ex.com/ns2#> .\n")
