@@ -7,8 +7,8 @@
            [java.time Instant LocalDate]
            [java.time.format DateTimeFormatter]))
 
-(def list-limit 5)
-(def embedded-limit 2)
+(def ^:dynamic *list-limit* 5)
+(def ^:dynamic *embedded-limit* 2)
 
 (def ^:dynamic *include-defaults* true)
 
@@ -60,7 +60,7 @@
   [s]
   (every? #(or (scalar? %)
                (and (map? %)
-                    (<= (count %) embedded-limit)
+                    (<= (count %) *embedded-limit*)
                     (every? scalar? (vals %)))) s))
 
 ;; An object to wrapping the components of a Typed Literal
@@ -133,7 +133,7 @@
     (do
       (.write out (int \)))
       (+ indent 2))
-    (let [width (if (scalar-seq? lst) list-limit 1)
+    (let [width (if (scalar-seq? lst) *list-limit* 1)
           indent (inc indent)
           next-line (apply str \newline (repeat indent \space))
           first-width (write-entity! out (first lst))]
@@ -240,7 +240,7 @@
           (if o1
             (do
               (.write out (int \,))
-              (let [n (if (zero? (mod ocount list-limit))
+              (let [n (if (zero? (mod ocount *list-limit*))
                         (do (.write out indent-str) indent)
                         (do (.write out (int \space)) (+ 2 last-indent)))]
                 (recur r1 (inc ocount) (write-entity! out o1 n))))
