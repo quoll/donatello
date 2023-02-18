@@ -11,8 +11,8 @@ io.github.quoll/donatello {:git/tag "v0.0.5" :git/sha "6b2e0b5"}
 
 ## Usage
 
-This is a very simple library with few features and no checking of data validity.
-It writes data in TTL format as it provided, with very little processing.
+This is a small library with few features and no checking of data validity.
+It writes data in TTL format as provided, with very little processing.
 
 To use, open an output stream, then write a header and then the triples:
 
@@ -84,6 +84,7 @@ been included, there is no attempt to convert URIs/URLs into a QName format.
 - `write-triples-map!` - Writes an entire nested map as a stream of triples to an output stream.
 - `typed-literal` - Creates a literal out of a lexical representation and its datatype IRI.
 - `lang-literal` - Creates a language literal out of a lexical representation and it language string.
+- `blank-node` - Creates an explicit blank node to include in a triple.
 - `camel-case` - Converts a string into a CamelCase form suitable for class IRIs.
 - `lower-camel-case` - Converts a string into a lowerCamerCase form suitable for predicate IRIs.
 
