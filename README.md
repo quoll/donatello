@@ -79,9 +79,10 @@ been included, there is no attempt to convert URIs/URLs into a QName format.
 
 ## Functions
 - `write-prefixes` - Writes a map of keywords to string forms of full IRIs to an output stream. Includes default namespaces.
-- `write-triple!` - Writes a single triple to an output stream.
+- `write-triple!` - Writes a triple to an output stream. Both the subject and object can be compound terms.
 - `write-triples!` - Writes all the triples for a single subject with a map of property/values to an output stream.
 - `write-triples-map!` - Writes an entire nested map as a stream of triples to an output stream.
+- `write-object!` - Write an anonymous object to an output stream.
 - `typed-literal` - Creates a literal out of a lexical representation and its datatype IRI.
 - `lang-literal` - Creates a language literal out of a lexical representation and it language string.
 - `blank-node` - Creates an explicit blank node to include in a triple.

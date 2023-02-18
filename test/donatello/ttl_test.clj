@@ -185,22 +185,74 @@
 (deftest test-single-triple
   (testing "Writing a single triple"
     (is (= "<http://ex.com/_1> <http://ex.com/p> \"test\".\n"
-           (fwrite #(ttl/write-triple! % (URI. "http://ex.com/_1") (URI. "http://ex.com/p") "test"))))
+           (fwrite ttl/write-triple! (URI. "http://ex.com/_1") (URI. "http://ex.com/p") "test")))
     (is (= "ex:_1 <http://ex.com/p> 5.0.\n"
-           (fwrite #(ttl/write-triple! % :ex/_1 (URI. "http://ex.com/p") 5.0))))))
+           (fwrite ttl/write-triple! :ex/_1 (URI. "http://ex.com/p") 5.0)))
+    (is (= "[a data:Class; b:data data:_123] data:rel [a data:Class; b:data data:_246].\n"
+           (fwrite ttl/write-triple!
+                   {:a :data/Class
+                    :b/data :data/_123}
+                   :data/rel
+                   {:a :data/Class
+                    :b/data :data/_246})))
+    (is (= (str "[a data:Class;\n"
+                " b:data data:_123;\n"
+                " b:more [a data:Inner;\n"
+                "         b:list (1 2 3)]] data:rel [:p1 \"data a\", \"data b\";\n"
+                "                                    <http://ex.com/> 5].\n")
+           (fwrite ttl/write-triple!
+                   {:a :data/Class
+                    :b/data :data/_123
+                    :b/more {:a :data/Inner :b/list [1 2 3]}}
+                   :data/rel
+                   {:p1 #{"data a" "data b"}
+                    (URI. "http://ex.com/") 5})))
+    (is (= (str "(\"one\" \"two\" \"three\" \"four\" \"five\"\n"
+                " \"six\") data:rel [:p1 \"data a\", \"data b\";\n"
+                "                  <http://ex.com/> 5].\n")
+           (fwrite ttl/write-triple!
+                   ["one" "two" "three" "four" "five" "six"]
+                   :data/rel
+                   {:p1 #{"data a" "data b"}
+                    (URI. "http://ex.com/") 5})))
+    ))
 
 (deftest test-triples
   (testing "Writing subject with property/objects"
     ;; NOTE: the following depends on the ordering of hashsets
     (is (= "ns:_inst :p1 \"data a\", \"data b\";\n         <http://ex.com/> 5.\n\n"
-           (fwrite #(ttl/write-triples! %1 :ns/_inst %2) {:p1 #{"data a" "data b"}
-                                                         (URI. "http://ex.com/") 5})))
+           (fwrite ttl/write-triples! :ns/_inst {:p1 #{"data a" "data b"}
+                                                 (URI. "http://ex.com/") 5})))
     (is (= (str "ns:_inst :p1 \"data a\", \"data b\";\n"
                 "         <http://ex.com/> 7, 1, 4, 6, 3,\n"
                 "                          2, 11, 9, 5, 10,\n"
                 "                          8.\n\n")
-           (fwrite #(ttl/write-triples! %1 :ns/_inst %2) {:p1 #{"data a" "data b"}
-                                                         (URI. "http://ex.com/") #{1 2 3 4 5 6 7 8 9 10 11}})))))
+           (fwrite ttl/write-triples! :ns/_inst {:p1 #{"data a" "data b"}
+                                                 (URI. "http://ex.com/") #{1 2 3 4 5 6 7 8 9 10 11}})))
+    (is (= (str "[a data:Class; b:data data:_123] :p1 \"data a\", \"data b\";\n"
+                "                                 <http://ex.com/> 5.\n\n")
+           (fwrite ttl/write-triples!
+                   {:a :data/Class
+                    :b/data :data/_123}
+                   {:p1 #{"data a" "data b"}
+                    (URI. "http://ex.com/") 5})))
+    (is (= (str "[a data:Class;\n"
+                " b:data data:_123;\n"
+                " b:more [a data:Inner;\n"
+                "         b:list (1 2 3)]] :p1 \"data a\", \"data b\";\n"
+                "                          <http://ex.com/> 5.\n\n")
+           (fwrite ttl/write-triples!
+                   {:a :data/Class
+                    :b/data :data/_123
+                    :b/more {:a :data/Inner :b/list [1 2 3]}}
+                   {:p1 #{"data a" "data b"}
+                    (URI. "http://ex.com/") 5})))
+    (is (= "[a data:Class; b:data data:_123] data:rel [a data:Class; b:data data:_246].\n\n"
+           (fwrite ttl/write-triples!
+                   {:a :data/Class
+                    :b/data :data/_123}
+                   {:data/rel {:a :data/Class
+                               :b/data :data/_246}})))))
 
 (deftest test-triples-map
   (testing "Writing a nested map"

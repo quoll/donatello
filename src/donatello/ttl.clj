@@ -275,16 +275,14 @@
    pred: The predicate of the triple.
    obj: The object of the triple."
   [^Writer out subj pred obj]
-  (when-not (and (scalar? subj) (scalar? pred) (scalar? obj))
-    (throw (ex-info "write-triple! should not be passed complex types" {:subject subj
-                                                                        :predicate pred
-                                                                        :object obj})))
-  (.write out (serialize subj))
-  (.write out (int \space))
-  (.write out (serialize pred))
-  (.write out (int \space))
-  (.write out (serialize obj))
-  (.write out ".\n"))
+  (let [w (write-entity! out subj)
+        p (serialize pred)
+        w2 (+ 2 (count p) w)]
+    (.write out (int \space))
+    (.write out p)
+    (.write out (int \space))
+    (write-entity! out obj w2)
+    (.write out ".\n")))
 
 (defn write-triples-map!
   "Writes to a stream a nested map of subjects to maps of predicates to objects.
@@ -294,3 +292,11 @@
   [^Writer out mp]
   (doseq [[subj props] mp]
     (write-triples! out subj props)))
+
+(defn write-object!
+  "Writes a single anonymous object to the output stream.
+   out: The object stream to write to.
+   e: The entity to write"
+  [^Writer out e]
+  (write-entity! out e)
+  (.write out ".\n\n"))
