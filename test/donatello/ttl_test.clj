@@ -15,6 +15,7 @@
     (is (= "true" (serialize true)))
     (is (= "false" (serialize false)))
     (is (= "\"test\"" (serialize "test")))
+    (is (= "\"test \\\\ \\\"escape\\\"\"" (serialize "test \\ \"escape\"")))
     (is (= "xsd:long" (serialize :xsd/long)))
     (is (= "<http://test.org/>" (serialize (URL. "http://test.org/"))))
     (is (= "<http://test.org/>" (serialize (URI. "http://test.org/"))))

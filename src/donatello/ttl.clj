@@ -12,6 +12,21 @@
 
 (def ^:dynamic *include-defaults* true)
 
+(def echar-map {\newline "\\n"
+                \return "\\r"
+                \tab "\\t"
+                \formfeed "\\f"
+                \backspace "\\b"
+                \" "\\\""
+                \\ "\\\\"})
+
+(defn escape
+  "Escapes a string for serializing"
+  [s]
+  (str (-> s
+           (s/replace #"[\n\r\t\f\"\\]" #(echar-map (.charAt % 0)))
+           (s/replace "\b" "\\b"))))
+
 (def skip-iri-chars #"[^0-9a-zA-Z]")
 (def bad-iri-chars #"['*]")
 
@@ -85,14 +100,14 @@
 (defmethod serialize Long [v] (str v))
 (defmethod serialize Double [v] (str v))
 (defmethod serialize Boolean [v] (str v))
-(defmethod serialize String [v] (str \" (s/replace v "\"" "\\\"") \"))
-(defmethod serialize URI [v] (str "<" v ">"))
-(defmethod serialize URL [v] (str "<" v ">"))
+(defmethod serialize String [v] (str \" (escape v) \"))
+(defmethod serialize URI [v] (str \< v \>))
+(defmethod serialize URL [v] (str \< v \>))
 (defmethod serialize Date [v] (str \" (.format DateTimeFormatter/ISO_INSTANT (.toInstant v)) "\"^^<xsd:dateTime>"))
 (defmethod serialize Instant [v] (str \" (.format DateTimeFormatter/ISO_INSTANT v) "\"^^<xsd:dateTime>"))
 (defmethod serialize LocalDate [v] (str \" (.format DateTimeFormatter/ISO_DATE v) "\"^^<xsd:date>"))
-(defmethod serialize TypedLiteral [{:keys [text type]}] (str \" (s/replace text "\"" "\\\"") "\"^^" (serialize type)))
-(defmethod serialize LangLiteral [{:keys [text lang]}] (str \" (s/replace text "\"" "\\\"") "\"@" (str lang)))
+(defmethod serialize TypedLiteral [{:keys [text type]}] (str \" (escape text) "\"^^" (serialize type)))
+(defmethod serialize LangLiteral [{:keys [text lang]}] (str \" (escape text) "\"@" (str lang)))
 (defmethod serialize BlankNode [{:keys [id]}] (str "_:b" id))
 
 (defmethod ^String serialize clojure.lang.Keyword
