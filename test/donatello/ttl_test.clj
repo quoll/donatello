@@ -173,6 +173,11 @@
 (def default-ns "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n")
 (def p1 "@prefix ns1: <http://demo.org/ns1/> .\n@prefix ns2: <http://ex.com/ns2#> .\n")
 
+(deftest test-base
+  (testing "Writing a base"
+    (is (= "@base <http://local.net/> .\n"
+           (fwrite ttl/write-base! "http://local.net/")))))
+
 (deftest test-prefixes
   (testing "Writing a prefix map"
     (is (= (str p1 default-ns \newline)

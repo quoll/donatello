@@ -116,6 +116,15 @@
     (str lns ":" (name v))
     (if (= v :a) "a" (str ":" (name v)))))
 
+(defn write-base!
+  "Writes a base to the provided output stream.
+   out: The output stream to write to.
+   base: The base URI as a string."
+  [^Writer out base]
+  (.write out "@base <")
+  (.write out (str base))
+  (.write out "> .\n"))
+
 (defn write-prefixes!
   "Writes a prefix map to the provided output stream.
    out: The output stream to write to.
