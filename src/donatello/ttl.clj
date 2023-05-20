@@ -12,6 +12,14 @@
 
 (def ^:dynamic *include-defaults* true)
 
+(def default-prefixes
+  {:rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   :rdfs "http://www.w3.org/2000/01/rdf-schema#"
+   :xsd "http://www.w3.org/2001/XMLSchema#"})
+
+(def ^:dynamic *context-base* nil)
+(def ^:dynamic *context-prefixes* {}) 
+
 (def echar-map {\newline "\\n"
                 \return "\\r"
                 \tab "\\t"
@@ -96,13 +104,30 @@
     ([] (->BlankNode (swap! counter inc)))
     ([label] (labelled-blank-node label))))
 
+(defn uri-output
+  [u abs?]
+  (let [s (str u)]
+    (cond
+      (and abs? *context-base* (s/starts-with? s *context-base*))
+      (str \< (subs s (count *context-base*)) \>)
+
+      (and abs? (or *context-prefixes* *include-defaults*))
+      (if-let [[k v] (first (filter (fn [[_ v]] (s/starts-with? s v))
+                                    (if *include-defaults*
+                                      (into default-prefixes *context-prefixes*)
+                                      *context-prefixes*)))]
+        (str (name k) \: (subs s (count v)))
+        (str \<  s \>))
+
+      :default (str \< s \>))))
+
 (defmulti serialize "Converts a simple datatype into a Turtle representation" class)
 (defmethod serialize Long [v] (str v))
 (defmethod serialize Double [v] (str v))
 (defmethod serialize Boolean [v] (str v))
 (defmethod serialize String [v] (str \" (escape v) \"))
-(defmethod serialize URI [v] (str \< v \>))
-(defmethod serialize URL [v] (str \< v \>))
+(defmethod serialize URI [v] (uri-output v (.isAbsolute ^URI v)))
+(defmethod serialize URL [v] (uri-output v true))
 (defmethod serialize Date [v] (str \" (.format DateTimeFormatter/ISO_INSTANT (.toInstant v)) "\"^^<xsd:dateTime>"))
 (defmethod serialize Instant [v] (str \" (.format DateTimeFormatter/ISO_INSTANT v) "\"^^<xsd:dateTime>"))
 (defmethod serialize LocalDate [v] (str \" (.format DateTimeFormatter/ISO_DATE v) "\"^^<xsd:date>"))
@@ -129,21 +154,22 @@
   "Writes a prefix map to the provided output stream.
    out: The output stream to write to.
    mp: a map where keys are either strings or keywords for a localname,
-       and values are strings containing the full namespace."
-  [^Writer out mp]
-  (let [mpx (if *include-defaults*
-              (cond-> mp
-                (nil? (:rdf mp)) (assoc :rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
-                (nil? (:rdfs mp)) (assoc :rdfs "http://www.w3.org/2000/01/rdf-schema#")
-                (nil? (:xsd mp)) (assoc :xsd "http://www.w3.org/2001/XMLSchema#"))
-              mp)]
-    (doseq [[l p] mpx]
-      (.write out "@prefix ")
-      (.write out (name l))
-      (.write out ": <")
-      (.write out (str p))
-      (.write out "> .\n")))
-  (.write out (int \newline)))
+       and values are strings containing the full namespace. Optional."
+  ([^Writer out] (when *include-defaults* (write-prefixes! out {})))
+  ([^Writer out mp]
+   (let [mpx (if *include-defaults*
+               (cond-> mp
+                 (nil? (:rdf mp)) (assoc :rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+                 (nil? (:rdfs mp)) (assoc :rdfs "http://www.w3.org/2000/01/rdf-schema#")
+                 (nil? (:xsd mp)) (assoc :xsd "http://www.w3.org/2001/XMLSchema#"))
+               mp)]
+     (doseq [[l p] mpx]
+       (.write out "@prefix ")
+       (.write out (name l))
+       (.write out ": <")
+       (.write out (str p))
+       (.write out "> .\n")))
+   (.write out (int \newline))))
 
 
 (declare write-entity! write-po! write-blank-object!)

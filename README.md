@@ -14,6 +14,8 @@ io.github.quoll/donatello {:git/tag "v1.1.1" :git/sha "952508c"}
 This is a small library with few features and no checking of data validity.
 It writes data in TTL format as provided, with very little processing.
 
+Clojure Keywords are treated as [QNames](https://en.wikipedia.org/wiki/QName) or [CURIEs](http://www.w3.org/TR/curie). The special keyword `:a` is treated as the Turtle synonym for `rdf:type`.
+
 To use, open an output stream, then write a header and then the triples:
 
 ```clojure
@@ -21,6 +23,7 @@ To use, open an output stream, then write a header and then the triples:
 (require '[clojure.java.io :as io])
 
 (with-open [out (io/writer "myfile.ttl")]
+  (ttl/write-base! out "http://local.athome.net/")
   (ttl/write-prefixes! out {:rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
                             :ex "http://example.org/data/"})
   (ttl/write-triples-map! out {:ex/fred {:ex/name "Fred"
@@ -35,7 +38,8 @@ To use, open an output stream, then write a header and then the triples:
 
 This will create the following TTL file:
 ```ttl
-@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns> .
+@base <http://local.athome.net/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix ex: <http://example.org/data/> .
@@ -77,8 +81,80 @@ Consequently, the keyword `:ex/parent` is emitted without awareness that there i
 no prefix describing the `ex` namespace. Similarly, even if the prefix for `ex` had
 been included, there is no attempt to convert URIs/URLs into a QName format.
 
+## Contexts
+There are 2 context dynamic vars for setting the current context when emitting URLs or URIs:
+- `*context-base*`: The current document base.
+- `*context-prefixes*`: The current prefixes.
+
+```clojure
+(binding [ttl/*context-base* "http://ex.com/"
+          ttl/*context-prefixes* {:ex "http://example.org/data/"}]
+  (ttl/write-triple! *out* (URI. "http://ex.com/document") :dc/author "Paula")
+  (ttl/write-triples! *out* (URI. "http://example.org/data/bambam")
+                            {:ex/parent #{(URL. "http://example.org/data/wilma")
+                                          (URL. "http://example.org/data/fred")}}))
+```
+
+This will create an output of:
+```ttl
+<document> dc:author "Paula".
+ex:bambam ex:parent ex:wilma, ex:fred.
+```
+
+## Blank Nodes
+Anonymous objects are included as blank nodes:
+```clojure
+(ttl/write-triple! *out* {:a :data/Class, :b/data :data/_123}
+                         :data/rel
+                         {:a :data/Class, :b/data :data/_246})
+```
+
+Creates an output of:
+```ttl
+[a data:Class; b:data data:_123] data:rel [a data:Class; b:data data:_246]
+```
+
+As per the Turtle spec, single objects may also be written:
+```clojure
+(ttl/write-object! *out* {:a :data/Number, :rdf/value 5})
+```
+Leads to:
+```ttl
+[a data:Number; rdf:value 5].
+```
+
+## Collections
+Clojure seqs are written as [RDF Collections](https://www.w3.org/TR/rdf-schema/#ch_collectionvocab).
+```clojure
+(ttl/write-triple! *out* :data/instance
+                         :data/values
+                         ["one" "two" "three"])
+```
+```ttl
+data:instance data:values ("one" "two" "three").
+```
+
+## Nesting
+Data structures can be fully nested:
+```clojure
+(ttl/write-triple! *out* {:a :data/Class
+                          :b/data :data/_123
+                          :b/more {:a :data/Inner :b/list [1 2 3]}}
+                         :data/rel
+                         {:p1 #{"data a" "data b"}
+                          (URI. "http://ex.com/") 5})
+```
+```ttl
+[a data:Class;
+ b:data data:_123;
+ b:more [a data:Inner;
+         b:list (1 2 3)]] data:rel [:p1 "data a", "data b";
+                                    <http://ex.com/> 5].
+```
+
 ## Functions
-- `write-prefixes` - Writes a map of keywords to string forms of full IRIs to an output stream. Includes default namespaces.
+- `write-base!` - Writes a "base" directive to set the base IRI document.
+- `write-prefixes!` - Writes a map of keywords to string forms of full IRIs to an output stream. Includes default namespaces.
 - `write-triple!` - Writes a triple to an output stream. Both the subject and object can be compound terms.
 - `write-triples!` - Writes all the triples for a single subject with a map of property/values to an output stream.
 - `write-triples-map!` - Writes an entire nested map as a stream of triples to an output stream.
@@ -91,8 +167,11 @@ been included, there is no attempt to convert URIs/URLs into a QName format.
 
 ## Serializing
 Various data types will be serialized appropriately:
-- `java.net.URI`, `java.net.URL` - These are both serialized as a full IRI
-- keywords - Converted as a QName/CURIE (Qualified Name/Compact URI). e.g. `:ns/name` becomes `ns:name`
+- `java.net.URI`, `java.net.URL` - These are both serialized as a full IRI, unless:
+  - the context includes a matching prefix, in which case a QName is written.
+  - the context base matches, in which case a relative IRI is written.
+- keyword `:a` - This is treated as the [Turtle special synonym](https://www.w3.org/TR/turtle/#iri-a) for `rdf:type`.
+- keywords - Converted as a QName/CURIE (Qualified Name/Compact URI). e.g. `:ns/name` becomes `ns:name`.
 - String, boolean, long, double - serialized as the appropriate literals in TTL.
 - `java.util.Date`, `java.time.Instant` - serialized as `xsd:dateTime` literals
 - `java.util.LocalDate` - serialized as `xsd:date` literals
@@ -104,7 +183,9 @@ of the following namespaces if they are not already defined:
 - rdfs
 - xsd
 
-This can be overridden by binding `*include-defaults*` to `false` before calling `write-prefixes!`:
+These prefixes are also included in contexts by default.
+
+Binding `*include-defaults*` to `false` will exclude these values before calling `write-prefixes!` or serializing URIs and URLs:
 
 ```clojure
 (binding [ttl/*include-defaults* false]
@@ -115,14 +196,7 @@ Will only output a single prefix, and not 4.
 Also, giving any of these namespaces your own definition will not be overridden by the defaults.
 
 ## TODO
-Immediate plans:
-- Passing maps in the subject or object position should result in a blank node with predicate/object pairs.
-- Passing sequential values in the subject or object positions should create a `rdf:List`.
 - Create limits for the above (possibly based on string width, but probably just use a max count per line).
-
-Future ideas:
-- Scanning URIs/URLs for known namespaces and converting to QNames.
-- Defining a protocol/interface for blank nodes to be emitted.
 
 ## License
 

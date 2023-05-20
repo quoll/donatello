@@ -30,6 +30,48 @@
     (is (re-find #"^_:b[0-9]+$" (serialize (ttl/blank-node))))
     (is (re-find #"^_:b[0-9]+$" (serialize (ttl/blank-node "x"))))))
 
+(deftest test-context-serialize
+  (testing "Converting URLs and URIs to strings within a context"
+    (binding [ttl/*context-prefixes* {:ex "http://ex.com/"
+                                      :t "http://test.org/"}]
+      (is (= "t:foo" (serialize (URL. "http://test.org/foo"))))
+      (is (= "ex:bar" (serialize (URL. "http://ex.com/bar"))))
+      (is (= "<http://example.com/bar>" (serialize (URL. "http://example.com/bar"))))
+      (is (= "t:foo" (serialize (URI. "http://test.org/foo"))))
+      (is (= "ex:bar" (serialize (URI. "http://ex.com/bar"))))
+      (is (= "<http://example.com/bar>" (serialize (URI. "http://example.com/bar"))))
+      (is (= "rdf:type"
+             (serialize (URI. "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"))))
+      (binding [ttl/*include-defaults* false]
+        (is (= "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>"
+               (serialize (URI. "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"))))))
+
+    (binding [ttl/*context-prefixes* {"ex" "http://ex.com/"
+                                      "t" "http://test.org/"}]
+      (is (= "t:foo" (serialize (URL. "http://test.org/foo"))))
+      (is (= "ex:bar" (serialize (URL. "http://ex.com/bar"))))
+      (is (= "<http://example.com/bar>" (serialize (URL. "http://example.com/bar"))))
+      (is (= "t:foo" (serialize (URI. "http://test.org/foo"))))
+      (is (= "ex:bar" (serialize (URI. "http://ex.com/bar"))))
+      (is (= "<http://example.com/bar>" (serialize (URI. "http://example.com/bar"))))
+      (is (= "rdf:type"
+             (serialize (URI. "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"))))
+      (binding [ttl/*include-defaults* false]
+        (is (= "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>"
+               (serialize (URI. "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"))))))
+
+    (is (= "rdf:type" (serialize (URI. "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"))))
+
+    (binding [ttl/*context-prefixes* (assoc ttl/*context-prefixes* :ex "http://ex.com/")]
+      (is (= "rdf:type" (serialize (URI. "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"))))
+      (is (= "<http://test.org/foo>" (serialize (URL. "http://test.org/foo"))))
+      (is (= "ex:bar" (serialize (URL. "http://ex.com/bar")))))
+    (binding [ttl/*context-prefixes* nil]
+      (is (= "rdf:type" (serialize (URI. "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"))))
+      (binding [ttl/*include-defaults* false]
+        (is (= "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>"
+               (serialize (URI. "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"))))))))
+
 (deftest test-camel-case
   (testing "Converting ascii text strings to CamelCase"
     (is (= "HelloWorld" (ttl/camel-case "hello world")))
@@ -81,6 +123,11 @@
     (is (= ["5" 1] (write #'ttl/write-entity! 5)))
     (is (= ["5.0" 3] (write #'ttl/write-entity! 5.0)))
     (is (= ["(:ex \"a\" 5)" 11] (write #'ttl/write-entity! [:ex "a" 5])))))
+
+(deftest object
+  (testing "Writing single object"
+    (is (= ["[a data:Number; rdf:value 5].\n\n" nil]
+           (write #'ttl/write-object! {:a :data/Number, :rdf/value 5})))))
 
 (deftest test-po
   (testing "Internal method of predicate/object(s) pairs"
@@ -176,7 +223,11 @@
 (deftest test-base
   (testing "Writing a base"
     (is (= "@base <http://local.net/> .\n"
-           (fwrite ttl/write-base! "http://local.net/")))))
+           (fwrite ttl/write-base! "http://local.net/"))))
+  (testing "Outputting with a base context"
+    (binding [ttl/*context-base* "http://local.net/"]
+      (is (= "<foo>" (ttl/serialize (URI. "http://local.net/foo"))))
+      (is (= "<foo>" (ttl/serialize (URL. "http://local.net/foo")))))))
 
 (deftest test-prefixes
   (testing "Writing a prefix map"
