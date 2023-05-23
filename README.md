@@ -6,7 +6,7 @@ A small library for writing TTL files.
 Add the following dependency to the `:deps` map in `deps.edn`:
 
 ```clojure
-io.github.quoll/donatello {:git/tag "v1.2.0" :git/sha "13a2216"}
+io.github.quoll/donatello {:git/tag "v1.2.1" :git/sha "db83027"}
 ```
 
 ## Usage
