@@ -1,6 +1,7 @@
 (ns donatello.ttl
   (:require [clojure.java.io :as io]
-            [clojure.string :as s])
+            [clojure.string :as s]
+            [tiara.data :refer [ordered-map EMPTY_MAP]])
   (:import [java.io Writer]
            [java.net URL URI]
            [java.util Date]
@@ -13,9 +14,10 @@
 (def ^:dynamic *include-defaults* true)
 
 (def default-prefixes
-  {:rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  (ordered-map
+   :rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
    :rdfs "http://www.w3.org/2000/01/rdf-schema#"
-   :xsd "http://www.w3.org/2001/XMLSchema#"})
+   :xsd "http://www.w3.org/2001/XMLSchema#"))
 
 (def ^:dynamic *context-base* nil)
 (def ^:dynamic *context-prefixes* {}) 
@@ -158,10 +160,10 @@
   ([^Writer out] (when *include-defaults* (write-prefixes! out {})))
   ([^Writer out mp]
    (let [mpx (if *include-defaults*
-               (cond-> mp
-                 (nil? (:rdf mp)) (assoc :rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
-                 (nil? (:rdfs mp)) (assoc :rdfs "http://www.w3.org/2000/01/rdf-schema#")
-                 (nil? (:xsd mp)) (assoc :xsd "http://www.w3.org/2001/XMLSchema#"))
+               (into (reduce (fn [m [k v]]
+                               (if (nil? (get mp k)) (assoc m k v) m))
+                             EMPTY_MAP default-prefixes)
+                     mp)
                mp)]
      (doseq [[l p] mpx]
        (.write out "@prefix ")

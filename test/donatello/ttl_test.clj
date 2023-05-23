@@ -231,7 +231,7 @@
 
 (deftest test-prefixes
   (testing "Writing a prefix map"
-    (is (= (str p1 default-ns \newline)
+    (is (= (str default-ns p1 \newline)
            (fwrite ttl/write-prefixes! {:ns1 "http://demo.org/ns1/"
                                        :ns2 "http://ex.com/ns2#"})))
     (is (= (str p1 \newline)
