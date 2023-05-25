@@ -201,7 +201,7 @@ Donatello writes objects to the output using the `serialize` multimethod. If you
 For instance, [Aristotle](https://github.com/arachne-framework/aristotle#literals) uses symbols for blank nodes, where:
 
 |Symbol|Represents|
-+----+----+
+|----|----|
 |the symbol `_`|unique blank node|
 |symbols starting with `_`| named blank node|
 |other symbols| IRI of the form `<urn:clojure:namespace/name>`.|
