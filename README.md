@@ -195,6 +195,27 @@ Will only output a single prefix, and not 4.
 
 Also, giving any of these namespaces your own definition will not be overridden by the defaults.
 
+## Extending
+Donatello writes objects to the output using the `serialize` multimethod. If you have new objects that you want to write, then you can extend the multimethod to these objects as well.
+
+For instance, [Aristotle](https://github.com/arachne-framework/aristotle#literals) uses symbols for blank nodes, where:
+
+|Symbol|Represents|
++----+----+
+|the symbol `_`|unique blank node|
+|symbols starting with `_`| named blank node|
+|other symbols| IRI of the form `<urn:clojure:namespace/name>`.|
+
+Donatello can be extended to this with:
+
+```clojure
+(defmethod ttl/serialize clojure.lang.Symbol [s]
+  (cond
+    (= s '_) (str "_:" (gensym))
+    (= \_ (first (name s))) (str "_:" (subs (name s) 1))
+    :default (str "<urn:clojure:" (namespace s) \/ (name s) \>)))
+```
+
 ## TODO
 - Create limits for the above (possibly based on string width, but probably just use a max count per line).
 
