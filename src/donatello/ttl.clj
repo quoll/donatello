@@ -161,7 +161,7 @@
   ([^Writer out mp]
    (let [mpx (if *include-defaults*
                (into (reduce (fn [m [k v]]
-                               (if (nil? (get mp k)) (assoc m k v) m))
+                               (if (nil? (or (get mp k) (get mp (name k)))) (assoc m k v) m))
                              EMPTY_MAP default-prefixes)
                      mp)
                mp)]
