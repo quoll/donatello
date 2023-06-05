@@ -152,6 +152,11 @@
   (.write out (str base))
   (.write out "> .\n"))
 
+(defn mixed-key-into
+  [dest src]
+  (reduce (fn [m [k v]] (if (nil? (or (get m k) (get m (name k)))) (assoc m k v) m))
+          dest src))
+
 (defn write-prefixes!
   "Writes a prefix map to the provided output stream.
    out: The output stream to write to.
@@ -160,10 +165,12 @@
   ([^Writer out] (when *include-defaults* (write-prefixes! out {})))
   ([^Writer out mp]
    (let [mpx (if *include-defaults*
-               (into (reduce (fn [m [k v]]
-                               (if (nil? (or (get mp k) (get mp (name k)))) (assoc m k v) m))
-                             EMPTY_MAP default-prefixes)
-                     mp)
+               (mixed-key-into
+                 ;; The following is similar to `select-keys` but removes the keys found in mp
+                 (reduce (fn [m [k v]]
+                           (if (nil? (or (get mp k) (get mp (name k)))) (assoc m k v) m))
+                         EMPTY_MAP default-prefixes)
+                 mp)
                mp)]
      (doseq [[l p] mpx]
        (.write out "@prefix ")

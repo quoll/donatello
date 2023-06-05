@@ -239,6 +239,19 @@
            (fwrite ttl/write-prefixes! {:ns1 "http://demo.org/ns1/"
                                         :rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
                                         :ns2 "http://ex.com/ns2#"})))
+    (is (= updated-ns
+           (fwrite ttl/write-prefixes! {"ns1" "http://demo.org/ns1/"
+                                        "rdf" "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                                        "ns2" "http://ex.com/ns2#"})))
+    (is (= updated-ns
+           (fwrite ttl/write-prefixes! {:ns1 "http://demo.org/ns1/"
+                                        "rdf" "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                                        :rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                                        :ns2 "http://ex.com/ns2#"})))
+    (is (= updated-ns
+           (fwrite ttl/write-prefixes! {"ns1" "http://demo.org/ns1/"
+                                        :rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                                        "ns2" "http://ex.com/ns2#"})))
     (is (= (str p1 \newline)
            (binding [ttl/*include-defaults* false]
              (fwrite ttl/write-prefixes! {:ns1 "http://demo.org/ns1/"
