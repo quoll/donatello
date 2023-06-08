@@ -8,9 +8,18 @@
            [java.time Instant LocalDate]
            [java.time.format DateTimeFormatter]))
 
+;; The maximum number of items from a list to print on a single line
 (def ^:dynamic *list-limit* 5)
+
+;; The maximum column width to print to in lists.
+;; This only applies to scalar values, not structures
+(def ^:dynamic *soft-max-width* 120)
+
+;; The maximum number of elements to include in an object before
+;; it will be split over multiple lines
 (def ^:dynamic *embedded-limit* 2)
 
+;; Whether or not to include the `default-prefixes` in an output document
 (def ^:dynamic *include-defaults* true)
 
 (def default-prefixes
@@ -196,12 +205,23 @@
           indent (inc indent)
           next-line (apply str \newline (repeat indent \space))
           first-width (write-entity! out (first lst))]
-      (loop [[e & r] (rest lst) line-nr 1 last-width (+ indent first-width)]
+      (loop [[e & r] (rest lst) line-elt 1 last-width (+ indent first-width)]
         (if e
-          (let [in (if (zero? (mod line-nr width))
-                     (do (.write out next-line) indent)
-                     (do (.write out (int \space)) (inc last-width)))]
-            (recur r (inc line-nr) (write-entity! out e in)))
+          (letfn [(write-spacing! [newline-test]
+                    (if newline-test
+                      (do (.write out next-line)
+                          [indent 1])
+                      (do (.write out (int \space))
+                          [(inc last-width) (inc line-elt)])))]
+            (if (scalar? e)
+              (let [s (serialize e)
+                    sl (count s)
+                    [in next-elt] (write-spacing! (or (= line-elt width)
+                                                      (>= (+ last-width sl) *soft-max-width*)))]
+                (.write out s)
+                (recur r next-elt (+ in sl)))
+              (let [[in next-elt] (write-spacing! (= line-elt width))]
+                (recur r next-elt (write-entity! out e in)))))
           (do
             (.write out (int \)))
             (inc last-width)))))))

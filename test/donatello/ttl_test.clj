@@ -163,6 +163,8 @@
       (is (= ":p1 (\"a\" \"b\")" s6))
       (is (= 16 w6)))))
 
+(defn spaces [n] (apply str (repeat n \space)))
+
 (deftest test-list
   (testing "Test the list output"
     (let [[s0 w0] (write #'ttl/write-list! '(1 2 3) 0)
@@ -174,7 +176,11 @@
           [s6 w6] (write #'ttl/write-list! '() 2)
           [s7 w7] (write #'ttl/write-list! '({:b 1} {:c "x"}) 2)
           [s8 w8] (write #'ttl/write-list! '((1 2) ("x" "y")) 2)
-          [s9 w9] (write #'ttl/write-list! '(1 2 3 4 5 6) 2)]
+          [s9 w9] (write #'ttl/write-list! '(1 2 3 4 5 6) 2)
+          [s10 w10] (write #'ttl/write-list! '(1 2 3 4 5 6) 116)
+          [s10a w10a] (write #'ttl/write-list! '(1 2 33 4 5 6) 116)
+          [s11 w11] (write #'ttl/write-list! '("one" "two" "three" "four" "five" "six") 104)
+          ]
       (is (= "(1 2 3)" s0))
       (is (= 7 w0))
       (is (= "()" s1))
@@ -194,7 +200,14 @@
       (is (= "((1 2)\n   (\"x\" \"y\"))" s8))
       (is (= 13 w8))
       (is (= "(1 2 3 4 5\n   6)" s9))
-      (is (= 5 w9)))))
+      (is (= 5 w9))
+      (is (= 121 w10))
+      (is (= (str "(1 2\n" (spaces 117) "3 4\n" (spaces 117) "5 6)") s10))
+      (is (= 119 w10a))
+      (is (= (str "(1 2\n" (spaces 117) "33\n" (spaces 117) "4 5\n" (spaces 117) "6)") s10a))
+      (is (= 118 w11))
+      (is (= (str "(\"one\" \"two\"\n" (spaces 105) "\"three\" \"four\"\n" (spaces 105) "\"five\" \"six\")") s11))
+      )))
 
 (deftest test-short-anon
   (testing "Test the short anonymous object"
