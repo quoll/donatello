@@ -216,8 +216,10 @@
             (if (scalar? e)
               (let [s (serialize e)
                     sl (count s)
-                    [in next-elt] (write-spacing! (or (= line-elt width)
-                                                      (>= (+ last-width sl) *soft-max-width*)))]
+                    [in next-elt] (write-spacing!
+                                   (or (>= line-elt width)
+                                       (and (> line-elt 0)
+                                            (> (+ last-width sl 1) *soft-max-width*))))]
                 (.write out s)
                 (recur r next-elt (+ in sl)))
               (let [[in next-elt] (write-spacing! (= line-elt width))]
@@ -316,14 +318,27 @@
             indent-str (apply str \newline (repeat indent \space))
             in (write-entity! out f indent)]
         (loop [[o1 & r1] r ocount 1 last-indent in]
-          (if o1
-            (do
-              (.write out (int \,))
-              (let [n (if (zero? (mod ocount *list-limit*))
-                        (do (.write out indent-str) indent)
-                        (do (.write out (int \space)) (+ 2 last-indent)))]
-                (recur r1 (inc ocount) (write-entity! out o1 n))))
-            last-indent)))
+          (letfn [(write-spacing! [newline-test]
+                    (if newline-test
+                      (do (.write out indent-str)
+                          [indent 1])
+                      (do (.write out (int \space))
+                          [(+ 2 last-indent) (inc ocount)])))]
+            (if o1
+              (do
+                (.write out (int \,))
+                (if (scalar? o1)
+                  (let [s (serialize o1)
+                        sl (count s)
+                        [n newcount] (write-spacing!
+                                      (or (>= ocount *list-limit*)
+                                          (and (> ocount 0)
+                                               (> (+ last-indent sl 2) *soft-max-width*))))]
+                    (.write out s)
+                    (recur r1 newcount (+ n sl)))
+                  (let [[n newcount] (write-spacing! (= ocount *list-limit*))]
+                    (recur r1 newcount (write-entity! out o1 n)))))
+              last-indent))))
       (write-entity! out o (+ ind pwidth 1)))))
 
 (defn write-triples!

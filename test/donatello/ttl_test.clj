@@ -1,6 +1,7 @@
 (ns donatello.ttl-test
   (:require [clojure.test :refer [testing is deftest]]
-            [donatello.ttl :as ttl :refer [serialize]])
+            [donatello.ttl :as ttl :refer [serialize]]
+            [tiara.data :as d])
   (:import [java.net URL URI]
            [java.util Date]
            [java.time Instant LocalDate]
@@ -129,6 +130,9 @@
     (is (= ["[a data:Number; rdf:value 5].\n\n" nil]
            (write #'ttl/write-object! {:a :data/Number, :rdf/value 5})))))
 
+(defn digits [n] (apply str (take n (cycle (range 10)))))
+(defn spaces [n] (apply str (repeat n \space)))
+
 (deftest test-po
   (testing "Internal method of predicate/object(s) pairs"
     (let [[s0 w0] (write #(#'ttl/write-po! %1 :p1 %2 %3) #{"data a" "data b"} 0)
@@ -141,7 +145,12 @@
                          '(1 2 3 4 5 6 7 8 9) 0)
           [s5 w5] (write #(#'ttl/write-po! %1 (URI. "http://ex.com/") %2 %3)
                          [1 2 3 4 5 6 7 8 9] 3)
-          [s6 w6] (write #(#'ttl/write-po! %1 :p1 %2 %3) ["a" "b"] 3)]
+          [s6 w6] (write #(#'ttl/write-po! %1 :p1 %2 %3) ["a" "b"] 3)
+          [s7 w7] (write #(#'ttl/write-po! %1 (URI. (str "http://twenty.com/" (digits 90))) %2 %3)
+                         (d/ordered-set 1 2 3 4 5 6 7 8 99 10 11 12) 0)
+          [s8 w8] (write #(#'ttl/write-po! %1 (URI. (str "http://twenty.com/" (digits 90))) %2 %3)
+                         (d/ordered-set "123456789012345" "1" "23" "45" "67" "8" "901" "234") 0)
+          ]
       (is (= ":p1 \"data a\", \"data b\"" s0))
       (is (= 22 w0))
       (is (= ":p1 \"data a\", \"data b\"" s1))
@@ -161,7 +170,21 @@
                   "                     6 7 8 9)") s5))
       (is (= 29 w5))
       (is (= ":p1 (\"a\" \"b\")" s6))
-      (is (= 16 w6)))))
+      (is (= 16 w6))
+      (is (= (str "<http://twenty.com/" (digits 90) "> 1, 2, 3,\n"
+                  (spaces 111) "4, 5, 6,\n"
+                  (spaces 111) "7, 8, 99,\n"
+                  (spaces 111) "10, 11,\n"
+                  (spaces 111) "12") s7))
+      (is (= 113 w7))
+      (is (= (str "<http://twenty.com/" (digits 90) "> \"123456789012345\",\n"
+                  (spaces 111) "\"1\", \"23\",\n"
+                  (spaces 111) "\"45\",\n"
+                  (spaces 111) "\"67\", \"8\",\n"
+                  (spaces 111) "\"901\",\n"
+                  (spaces 111) "\"234\"") s8))
+      (is (= 116 w8))
+      )))
 
 (defn spaces [n] (apply str (repeat n \space)))
 
@@ -179,8 +202,7 @@
           [s9 w9] (write #'ttl/write-list! '(1 2 3 4 5 6) 2)
           [s10 w10] (write #'ttl/write-list! '(1 2 3 4 5 6) 116)
           [s10a w10a] (write #'ttl/write-list! '(1 2 33 4 5 6) 116)
-          [s11 w11] (write #'ttl/write-list! '("one" "two" "three" "four" "five" "six") 104)
-          ]
+          [s11 w11] (write #'ttl/write-list! '("one" "two" "three" "four" "five" "six") 104)]
       (is (= "(1 2 3)" s0))
       (is (= 7 w0))
       (is (= "()" s1))
@@ -206,8 +228,7 @@
       (is (= 119 w10a))
       (is (= (str "(1 2\n" (spaces 117) "33\n" (spaces 117) "4 5\n" (spaces 117) "6)") s10a))
       (is (= 118 w11))
-      (is (= (str "(\"one\" \"two\"\n" (spaces 105) "\"three\" \"four\"\n" (spaces 105) "\"five\" \"six\")") s11))
-      )))
+      (is (= (str "(\"one\" \"two\"\n" (spaces 105) "\"three\" \"four\"\n" (spaces 105) "\"five\" \"six\")") s11)))))
 
 (deftest test-short-anon
   (testing "Test the short anonymous object"
