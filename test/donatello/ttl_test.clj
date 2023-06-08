@@ -149,8 +149,7 @@
           [s7 w7] (write #(#'ttl/write-po! %1 (URI. (str "http://twenty.com/" (digits 90))) %2 %3)
                          (d/ordered-set 1 2 3 4 5 6 7 8 99 10 11 12) 0)
           [s8 w8] (write #(#'ttl/write-po! %1 (URI. (str "http://twenty.com/" (digits 90))) %2 %3)
-                         (d/ordered-set "123456789012345" "1" "23" "45" "67" "8" "901" "234") 0)
-          ]
+                         (d/ordered-set "123456789012345" "1" "23" "45" "67" "8" "901" "234") 0)]
       (is (= ":p1 \"data a\", \"data b\"" s0))
       (is (= 22 w0))
       (is (= ":p1 \"data a\", \"data b\"" s1))
@@ -183,8 +182,7 @@
                   (spaces 111) "\"67\", \"8\",\n"
                   (spaces 111) "\"901\",\n"
                   (spaces 111) "\"234\"") s8))
-      (is (= 116 w8))
-      )))
+      (is (= 116 w8)))))
 
 (defn spaces [n] (apply str (repeat n \space)))
 
