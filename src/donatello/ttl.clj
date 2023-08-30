@@ -339,8 +339,7 @@
                                           (> (+ last-indent sl 2) *soft-max-width*)))]
                     (.write out s)
                     (recur r1 newcount (+ n sl) false))
-                  (let [_ (println "test: " o1 ocount last-obj?)
-                        [n newcount] (write-spacing! (or (>= ocount *list-limit*)
+                  (let [[n newcount] (write-spacing! (or (>= ocount *list-limit*)
                                                          (and last-obj?
                                                               (>= ocount *object-list-limit*))))]
                     (recur r1 newcount (write-entity! out o1 n) true))))
