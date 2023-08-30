@@ -343,7 +343,7 @@
                   (let [[n newcount] (write-spacing! (or (= ocount *list-limit*)
                                                          (and (> ocount 0)
                                                               last-obj?
-                                                              (>= ocount *object-list-limit*))))]
+                                                              (= ocount *object-list-limit*))))]
                     (recur r1 newcount (write-entity! out o1 n) true))))
               last-indent))))
       (write-entity! out o (+ ind pwidth 1)))))

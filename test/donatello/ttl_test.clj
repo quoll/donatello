@@ -337,6 +337,25 @@
                 "                          8.\n\n")
            (fwrite ttl/write-triples! :ns/_inst {:p1 #{"data a" "data b"}
                                                  (URI. "http://ex.com/") #{1 2 3 4 5 6 7 8 9 10 11}})))
+    (is (= (str "ns:_inst :p1 \"data a\", \"data b\";\n"
+                "         <http://ex.com/> 7, 1, 4,\n"
+                "                          6, 3, 2,\n"
+                "                          11, 9, 5,\n"
+                "                          10, 8.\n\n")
+           (binding [ttl/*list-limit* 3]
+             (fwrite ttl/write-triples! :ns/_inst {:p1 #{"data a" "data b"}
+                                                   (URI. "http://ex.com/") #{1 2 3 4 5 6 7 8 9 10 11}}))))
+    (is (= (str "ns:_inst <http://ex.com/> [:v 4], [:v 1],\n"
+                "                          [:v 3], [:v 5],\n"
+                "                          [:v 2], [:v 6].\n\n")
+           (binding [ttl/*object-list-limit* 2]
+             (fwrite ttl/write-triples! :ns/_inst {(URI. "http://ex.com/") #{{:v 1} {:v 2} {:v 3} {:v 4}
+                                                                             {:v 5} {:v 6}}}))))
+    (is (= (str "ns:_inst <http://ex.com/> [:v 4], [:v 1], [:v 3],\n"
+                "                          [:v 5], [:v 2], [:v 6].\n\n")
+           (binding [ttl/*object-list-limit* 3]
+             (fwrite ttl/write-triples! :ns/_inst {(URI. "http://ex.com/") #{{:v 1} {:v 2} {:v 3} {:v 4}
+                                                                             {:v 5} {:v 6}}}))))
     (is (= (str "[a data:Class; b:data data:_123] :p1 \"data a\", \"data b\";\n"
                 "                                 <http://ex.com/> 5.\n\n")
            (fwrite ttl/write-triples!
