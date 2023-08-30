@@ -37,6 +37,7 @@
                                       :t "http://test.org/"}]
       (is (= "t:foo" (serialize (URL. "http://test.org/foo"))))
       (is (= "ex:bar" (serialize (URL. "http://ex.com/bar"))))
+      (is (= "<http://ex.com/bar/err>" (serialize (URL. "http://ex.com/bar/err"))))
       (is (= "<http://example.com/bar>" (serialize (URL. "http://example.com/bar"))))
       (is (= "t:foo" (serialize (URI. "http://test.org/foo"))))
       (is (= "ex:bar" (serialize (URI. "http://ex.com/bar"))))

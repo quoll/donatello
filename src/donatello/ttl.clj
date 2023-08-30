@@ -11,6 +11,9 @@
 ;; The maximum number of items from a list to print on a single line
 (def ^:dynamic *list-limit* 5)
 
+;; The maximum number of structured items from a list to print on a single line
+(def ^:dynamic *object-list-limit* 5)
+
 ;; The maximum column width to print to in lists.
 ;; This only applies to scalar values, not structures
 (def ^:dynamic *soft-max-width* 120)
@@ -123,7 +126,8 @@
       (str \< (subs s (count *context-base*)) \>)
 
       (and abs? (or *context-prefixes* *include-defaults*))
-      (if-let [[k v] (first (filter (fn [[_ v]] (s/starts-with? s v))
+      (if-let [[k v] (first (filter (fn [[_ v]] (and (s/starts-with? s v)
+                                                     (nil? (s/index-of s \/ (.length v)))))
                                     (if *include-defaults*
                                       (into default-prefixes *context-prefixes*)
                                       *context-prefixes*)))]
@@ -317,7 +321,7 @@
             indent (+ ind pwidth 1)
             indent-str (apply str \newline (repeat indent \space))
             in (write-entity! out f indent)]
-        (loop [[o1 & r1] r ocount 1 last-indent in]
+        (loop [[o1 & r1] r ocount 1 last-indent in last-obj? false]
           (letfn [(write-spacing! [newline-test]
                     (if newline-test
                       (do (.write out indent-str)
@@ -335,9 +339,12 @@
                                           (and (> ocount 0)
                                                (> (+ last-indent sl 2) *soft-max-width*))))]
                     (.write out s)
-                    (recur r1 newcount (+ n sl)))
-                  (let [[n newcount] (write-spacing! (= ocount *list-limit*))]
-                    (recur r1 newcount (write-entity! out o1 n)))))
+                    (recur r1 newcount (+ n sl) false))
+                  (let [[n newcount] (write-spacing! (or (= ocount *list-limit*)
+                                                         (and (> ocount 0)
+                                                              last-obj?
+                                                              (>= ocount *object-list-limit*))))]
+                    (recur r1 newcount (write-entity! out o1 n) true))))
               last-indent))))
       (write-entity! out o (+ ind pwidth 1)))))
 
