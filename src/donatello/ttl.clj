@@ -321,7 +321,7 @@
             indent (+ ind pwidth 1)
             indent-str (apply str \newline (repeat indent \space))
             in (write-entity! out f indent)]
-        (loop [[o1 & r1] r ocount 1 last-indent in last-obj? false]
+        (loop [[o1 & r1] r ocount 1 last-indent in last-obj? (not (scalar? f))]
           (letfn [(write-spacing! [newline-test]
                     (if newline-test
                       (do (.write out indent-str)
