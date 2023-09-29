@@ -4,7 +4,7 @@
             [org.corfield.build :as bb]))
 
 (def lib 'org.clojars.quoll/donatello)
-(def version "1.2.11")
+(def version "1.2.12")
 
 ;; clojure -T:build test
 (defn test "Run the tests." [opts]
@@ -12,11 +12,13 @@
 
 ;; clojure -T:build ci
 (defn ci "Run the CI pipeline of tests (and build the JAR)." [opts]
-  (-> opts
-      (assoc :lib lib :version version)
-      (bb/run-tests)
-      (bb/clean)
-      (bb/jar)))
+  (if-not (.exists (java.io.File. "pom.xml"))
+    (throw (ex-info "Must have a pom.xml with a license section"))
+    (-> opts
+        (assoc :lib lib :version version)
+        (bb/run-tests)
+        (bb/clean)
+        (bb/jar))))
 
 ;; clojure -T:build install
 (defn install "Install the JAR locally." [opts]
