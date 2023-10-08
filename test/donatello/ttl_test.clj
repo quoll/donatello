@@ -1,6 +1,7 @@
 (ns donatello.ttl-test
   (:require [clojure.test :refer [testing is deftest]]
             [donatello.ttl :as ttl :refer [serialize]]
+            [quoll.rdf :as rdf]
             [tiara.data :as d])
   (:import [java.net URL URI]
            [java.util Date]
@@ -23,13 +24,13 @@
     (is (= "\"2023-02-11T22:39:06.109Z\"^^xsd:dateTime" (serialize (Date. 1676155146109))))
     (is (= "\"2023-02-11T22:39:06.109Z\"^^xsd:dateTime" (serialize (Instant/ofEpochMilli 1676155146109))))
     (is (= "\"2023-02-11\"^^xsd:date" (serialize (LocalDate/of 2023 2 11))))
-    (is (= "\"-26.84372,150.54195\"^^asami:geo" (serialize (ttl/typed-literal "-26.84372,150.54195" :asami/geo))))
+    (is (= "\"-26.84372,150.54195\"^^asami:geo" (serialize (rdf/typed-literal "-26.84372,150.54195" :asami/geo))))
     (is (= "\"-26.84372,150.54195\"^^<http://quoll.clojars.org/geo>"
-           (serialize (ttl/typed-literal "-26.84372,150.54195" (URL. "http://quoll.clojars.org/geo")))))
+           (serialize (rdf/typed-literal "-26.84372,150.54195" (URL. "http://quoll.clojars.org/geo")))))
     (is (= "\"chat\"@fr"
-           (serialize (ttl/lang-literal "chat" "fr"))))
-    (is (re-find #"^_:b[0-9]+$" (serialize (ttl/blank-node))))
-    (is (re-find #"^_:b[0-9]+$" (serialize (ttl/blank-node "x"))))))
+           (serialize (rdf/lang-literal "chat" "fr"))))
+    (is (re-find #"^_:b[0-9]+$" (serialize (rdf/blank-node))))
+    (is (re-find #"^_:b[0-9]+$" (serialize (rdf/blank-node "x"))))))
 
 (deftest test-context-serialize
   (testing "Converting URLs and URIs to strings within a context"
@@ -84,9 +85,9 @@
 
 (deftest test-blank
   (testing "If blank nodes are consistently different or the same when requested"
-    (is (= (ttl/blank-node "x") (ttl/blank-node "x")))
-    (is (not= (ttl/blank-node "x") (ttl/blank-node "y")))
-    (is (not= (ttl/blank-node) (ttl/blank-node)))))
+    (is (= (rdf/blank-node "x") (rdf/blank-node "x")))
+    (is (not= (rdf/blank-node "x") (rdf/blank-node "y")))
+    (is (not= (rdf/blank-node) (rdf/blank-node)))))
 
 (defn write
   [f & args]

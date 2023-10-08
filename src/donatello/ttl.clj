@@ -1,12 +1,15 @@
 (ns donatello.ttl
   (:require [clojure.java.io :as io]
             [clojure.string :as s]
-            [tiara.data :refer [ordered-map EMPTY_MAP]])
+            [tiara.data :refer [ordered-map EMPTY_MAP]]
+            [quoll.rdf :as rdf :refer [lang-literal typed-literal iri common-prefixes]])
   (:import [java.io Writer]
            [java.net URL URI]
            [java.util Date]
            [java.time Instant LocalDate]
-           [java.time.format DateTimeFormatter]))
+           [java.time.format DateTimeFormatter]
+           [clojure.lang Keyword]
+           [quoll.rdf BlankNode TypedLiteral LangLiteral IRI]))
 
 ;; The maximum number of items from a list to print on a single line
 (def ^:dynamic *list-limit* 5)
@@ -27,27 +30,12 @@
 
 (def default-prefixes
   (ordered-map
-   :rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-   :rdfs "http://www.w3.org/2000/01/rdf-schema#"
-   :xsd "http://www.w3.org/2001/XMLSchema#"))
+   :rdf (common-prefixes :rdf)
+   :rdfs (common-prefixes :rdfs)
+   :xsd (common-prefixes :xsd)))
 
 (def ^:dynamic *context-base* nil)
 (def ^:dynamic *context-prefixes* {}) 
-
-(def echar-map {\newline "\\n"
-                \return "\\r"
-                \tab "\\t"
-                \formfeed "\\f"
-                \backspace "\\b"
-                \" "\\\""
-                \\ "\\\\"})
-
-(defn escape
-  "Escapes a string for serializing"
-  [s]
-  (str (-> s
-           (s/replace #"[\n\r\t\f\"\\]" #(echar-map (.charAt % 0)))
-           (s/replace "\b" "\\b"))))
 
 (def skip-iri-chars #"[^0-9a-zA-Z]")
 (def bad-iri-chars #"['*]")
@@ -100,24 +88,6 @@
                     (<= (count %) *embedded-limit*)
                     (every? scalar? (vals %)))) s))
 
-;; An object to wrapping the components of a Typed Literal
-(defrecord TypedLiteral [text type])
-(defn typed-literal [text type] (->TypedLiteral text type))
-
-;; An object to wrapping the components of a Language tagged Literal
-(defrecord LangLiteral [text lang])
-(defn lang-literal [text lang] (->LangLiteral text lang))
-
-(defrecord BlankNode [id])
-
-(let [counter (atom 0)]
-  (def ^:private labelled-blank-node
-    (memoize (fn [label] (->BlankNode (swap! counter inc)))))
-
-  (defn blank-node
-    ([] (->BlankNode (swap! counter inc)))
-    ([label] (labelled-blank-node label))))
-
 (defn uri-output
   [u abs?]
   (let [s (str u)]
@@ -136,25 +106,46 @@
 
       :default (str \< s \>))))
 
-(defmulti serialize "Converts a simple datatype into a Turtle representation" class)
-(defmethod serialize Long [v] (str v))
-(defmethod serialize Double [v] (str v))
-(defmethod serialize Boolean [v] (str v))
-(defmethod serialize String [v] (str \" (escape v) \"))
-(defmethod serialize URI [v] (uri-output v (.isAbsolute ^URI v)))
-(defmethod serialize URL [v] (uri-output v true))
-(defmethod serialize Date [v] (str \" (.format DateTimeFormatter/ISO_INSTANT (.toInstant v)) "\"^^xsd:dateTime"))
-(defmethod serialize Instant [v] (str \" (.format DateTimeFormatter/ISO_INSTANT v) "\"^^xsd:dateTime"))
-(defmethod serialize LocalDate [v] (str \" (.format DateTimeFormatter/ISO_DATE v) "\"^^xsd:date"))
-(defmethod serialize TypedLiteral [{:keys [text type]}] (str \" (escape text) "\"^^" (serialize type)))
-(defmethod serialize LangLiteral [{:keys [text lang]}] (str \" (escape text) "\"@" (str lang)))
-(defmethod serialize BlankNode [{:keys [id]}] (str "_:b" id))
+(defprotocol Serializable
+  (serialize [v] "Serializes an object or value to its TTL string representation"))
 
-(defmethod ^String serialize clojure.lang.Keyword
-  [v]
-  (if-let [lns (namespace v)]
-    (str lns ":" (name v))
-    (if (= v :a) "a" (str ":" (name v)))))
+(extend-protocol Serializable
+  Object
+  (serialize [v] (str v))
+
+  Long
+  (serialize [v] (str v))
+
+  Double
+  (serialize [v] (str v))
+
+  Boolean
+  (serialize [v] (str v))
+
+  String
+  (serialize [v] (str \" (rdf/print-escape v) \"))
+
+  URI 
+  (serialize [v] (uri-output v (.isAbsolute ^URI v)))
+
+  URL 
+  (serialize [v] (uri-output v true))
+
+  Date 
+  (serialize [v] (str \" (.format DateTimeFormatter/ISO_INSTANT (.toInstant v)) "\"^^xsd:dateTime"))
+
+  Instant 
+  (serialize [v] (str \" (.format DateTimeFormatter/ISO_INSTANT v) "\"^^xsd:dateTime"))
+
+  LocalDate 
+  (serialize [v] (str \" (.format DateTimeFormatter/ISO_DATE v) "\"^^xsd:date"))
+
+  Keyword
+  (serialize 
+    [v]
+    (if-let [lns (namespace v)]
+      (str lns ":" (name v))
+      (if (= v :a) "a" (str ":" (name v))))))
 
 (defn write-base!
   "Writes a base to the provided output stream.
