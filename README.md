@@ -78,8 +78,9 @@ For example, to write a triple to a string:
   (str buffer))
 ```
 
-A convenience method exists to write all of the output to a string. This is available in both
-Clojure and ClojureScript, but is particularly helpful in ClojureScript:
+A convenience function called `to-string` exists to write all of the output to a string.
+This is available in both Clojure and ClojureScript, but is particularly helpful
+in ClojureScript:
 
 ```clojure
 (let [base-string (ttl/to-string ttl/write-base! "http://local.athome.net/")
