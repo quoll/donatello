@@ -6,12 +6,12 @@ A small library for writing TTL files.
 Add the following dependency to the `:deps` map in `deps.edn`:
 
 ```clojure
-org.clojars.quoll/donatello {:mvn/version "1.3.1"}
+org.clojars.quoll/donatello {:mvn/version "1.3.2"}
 ```
 
 ### Leiningen/Boot
 ```clojure
-[org.clojars.quoll/donatello "1.3.1"]
+[org.clojars.quoll/donatello "1.3.2"]
 ```
 
 ## Usage
