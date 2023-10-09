@@ -6,13 +6,12 @@ A small library for writing TTL files.
 Add the following dependency to the `:deps` map in `deps.edn`:
 
 ```clojure
-org.clojars.quoll/donatello {:mvn/version "1.3.0"}
-
+org.clojars.quoll/donatello {:mvn/version "1.3.1"}
 ```
 
 ### Leiningen/Boot
 ```clojure
-[org.clojars.quoll/donatello "1.3.0"]
+[org.clojars.quoll/donatello "1.3.1"]
 ```
 
 ## Usage
@@ -65,6 +64,33 @@ ex:fred ex:child ex:bambam.
 Note how each call to `write-triples!` or `write-triples-map!` writes new subjects without
 merging the data for existing subjects. This is because these functions are writing
 data immediately to the stream. If merging is required, then be sure to merge them in maps.
+
+## ClojureScript Output
+Donatello uses the `IWriter` protocol found in ClojureScript in `cljs.core`. The only writer
+provided by ClojureScript is a `StringBufferWriter` which can wrap a string buffer from
+`goog.string`. Feel free to create others, especially for Node.js!
+
+For example, to write a triple to a string:
+```clojure
+(let [buffer (goog.string.StringBuffer.)
+      out (StringBufferWriter. buffer)]
+  (write-triple! out :ex/fred :ex/child :ex/bambam)
+  (str buffer))
+```
+
+A convenience method exists to write all of the output to a string. This is available in both
+Clojure and ClojureScript, but is particularly helpful in ClojureScript:
+
+```clojure
+(let [base-string (ttl/to-string ttl/write-base! "http://local.athome.net/")
+      prefix-string (ttl/to-string ttl/write-prefixes! {:rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                                                        :ex "http://example.org/data/"})
+      triples-string (ttl/to-string ttl/write-triples-map! {:ex/fred {:ex/name "Fred"
+                                                                      :ex/age 40}
+                                                            :ex/wilma {:ex/name "Wilma"
+                                                                       :ex/age 39}})]
+  (str base-string prefix-string triples-string))
+```
 
 ### URLs, URIs and Multiple Objects
 URLs and URIs are both supported. Also, if the Object in a triple is a set, then
@@ -170,6 +196,7 @@ Data structures can be fully nested:
 - `blank-node` - Creates an explicit blank node to include in a triple.
 - `camel-case` - Converts a string into a CamelCase form suitable for class IRIs.
 - `lower-camel-case` - Converts a string into a lowerCamerCase form suitable for predicate IRIs.
+- `to-string` - Wraps a function call in a string writer, returning the string.
 
 ## Serializing
 Various data types will be serialized appropriately:
@@ -202,7 +229,7 @@ Will only output a single prefix, and not 4.
 Also, giving any of these namespaces your own definition will not be overridden by the defaults.
 
 ## Extending
-Donatello writes objects to the output using the `serialize` multimethod. If you have new objects that you want to write, then you can extend the multimethod to these objects as well.
+Donatello writes objects to the output using the `Serializable` protocol. If you have new objects that you want to write, then you can extend the protocol to these objects as well.
 
 For instance, [Aristotle](https://github.com/arachne-framework/aristotle#literals) uses symbols for blank nodes, where:
 
@@ -212,18 +239,26 @@ For instance, [Aristotle](https://github.com/arachne-framework/aristotle#literal
 |symbols starting with `_`| named blank node|
 |other symbols| IRI of the form `<urn:clojure:namespace/name>`.|
 
-Donatello can be extended to this with:
+Donatello can be extended to this by implementing `serialize` for the `Symbol` class:
 
 ```clojure
-(defmethod ttl/serialize clojure.lang.Symbol [s]
-  (cond
-    (= s '_) (str "_:" (gensym))
-    (= \_ (first (name s))) (str "_:" (subs (name s) 1))
-    :default (str "<urn:clojure:" (namespace s) \/ (name s) \>)))
+(extend-protocol Serializable
+  Symbol
+  (serialize
+    [s]
+    (cond
+      (= s '_) (str "_:" (gensym))
+      (= \_ (first (name s))) (str "_:" (subs (name s) 1))
+      :default (str "<urn:clojure:" (namespace s) \/ (name s) \>))))
 ```
 
-## TODO
-- Create limits for the above (possibly based on string width, but probably just use a max count per line).
+If using Clojure, then be sure to `import` the `Symbol` class from `clojure.lang`, or fully qualify the
+class as `clojure.lang.Symbol` in the `extend-protocol` definition. For instance, the following could
+be added to the `ns` declaration at the top of the file:
+```clojure
+(:import [clojure.lang Symbol])
+```
+ClojureScript does not need to explicitly import `Symbol` as it is already available.
 
 ## License
 
