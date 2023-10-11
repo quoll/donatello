@@ -79,7 +79,11 @@
 (defn scalar?
   "Is an object scalar or complex?"
   [s]
-  (not #?(:clj (complex? (type s)) :cljs (coll? s))))
+  (not #?(:clj (complex? (type s))
+          :cljs (and (coll? s)
+                     (not (instance? rdf/BlankNode s))
+                     (not (instance? rdf/TypedLiteral s))
+                     (not (instance? rdf/LangLiteral s))))))
 
 (defn scalar-seq?
   "Tests if a seq contains elements that are scalar and not complex"

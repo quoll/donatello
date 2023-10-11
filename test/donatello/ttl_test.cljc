@@ -141,7 +141,14 @@
     (is (= ["5" 1] (write #'ttl/write-entity! 5)))
     #?(:clj (is (= ["5.0" 3] (write #'ttl/write-entity! 5.0)))
        :cljs (is (= ["5.1" 3] (write #'ttl/write-entity! 5.1))))
-    (is (= ["(:ex \"a\" 5)" 11] (write #'ttl/write-entity! [:ex "a" 5])))))
+    (is (= ["(:ex \"a\" 5)" 11] (write #'ttl/write-entity! [:ex "a" 5])))
+    (is (= ["\"-26.84372,150.54195\"^^asami:geo" 32] (write #'ttl/write-entity! (rdf/typed-literal "-26.84372,150.54195" :asami/geo))))
+    (is (= ["\"-26.84372,150.54195\"^^<http://quoll.clojars.org/geo>" 53]
+           (write #'ttl/write-entity! (rdf/typed-literal "-26.84372,150.54195" (url "http://quoll.clojars.org/geo")))))
+    (is (= ["\"chat\"@fr" 9] (write #'ttl/write-entity! (rdf/lang-literal "chat" "fr"))))
+    (is (re-find #"^_:b[0-9]+$" (first (write #'ttl/write-entity! (rdf/blank-node)))))
+    (is (re-find #"^_:b[0-9]+$" (first (write #'ttl/write-entity! (rdf/blank-node "label")))))
+    (is (= ["_:label" 7] (write #'ttl/write-entity! (rdf/unsafe-blank-node "label"))))))
 
 (deftest object
   (testing "Writing single object"
