@@ -326,6 +326,11 @@
               (fwrite ttl/write-triple! :ex/_1 (uri "http://ex.com/p") 5.1))))
     (is (= "ex:_1 <http://ex.com/p> 5 .\n"
            (fwrite ttl/write-triple! :ex/_1 (uri "http://ex.com/p") 5)))
+    (is (= "ex:_1 <http://ex.com/p> true.\n"
+           (fwrite ttl/write-triple! :ex/_1 (uri "http://ex.com/p") true)))
+    (binding [ttl/*neptune* true]
+      (is (= "ex:_1 <http://ex.com/p> true .\n"
+             (fwrite ttl/write-triple! :ex/_1 (uri "http://ex.com/p") true))))
     (is (= "[a data:Class; b:data data:_123] data:rel [a data:Class; b:data data:_246].\n"
            (fwrite ttl/write-triple!
                    {:a :data/Class
