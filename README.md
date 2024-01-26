@@ -261,6 +261,15 @@ be added to the `ns` declaration at the top of the file:
 ```
 ClojureScript does not need to explicitly import `Symbol` as it is already available.
 
+## Neptune Flag
+Neptune has an issue with it's Turtle parser where it won't parse a boolean that appears immediately before a statement-terminating dot (`.`) character. Set the `*neptune*` flag to `true` to add an extra space after booleans.
+
+For example:
+```turtle
+(binding [donatello.ttl/*neptune* true]
+  (write-triple! :ex/subject :ex/predicate true))
+```
+
 ## License
 
 Copyright © 2023 Paula Gearon
