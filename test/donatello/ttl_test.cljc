@@ -116,25 +116,26 @@
 
 (deftest blank-object
   (testing "Writes out an anonymous object"
-    (let [[s0 w0] (write #'ttl/write-blank-object! {} 0)
-          [s1 w1] (write #'ttl/write-blank-object!
-                         {:p1 5, :a/p2 #{"t1" "t2"}, (uri "http://ugh.com/") 11} 0)
-          [s2 w2] (write #'ttl/write-blank-object!
-                         {:p1 5, :a/p2 #{"t1" "t2"}, (uri "http://ugh.com/") 11} 3)
-          [s3 w3] (write #'ttl/write-blank-object!
-                         {:p1 {}, :a/p2 #{{:x/y 4} "t2"}, :a/c 11} 0)
-          [s4 w4] (write #'ttl/write-blank-object!
-                         {:p1 {}, :a/p2 #{{:x/y 4} {:x/y 5 :x/z 6}}, :a/c 11} 0)]
-      (is (= "[]" s0))
-      (is (= 2 w0))
-      (is (= "[:p1 5;\n a:p2 \"t1\", \"t2\";\n <http://ugh.com/> 11]" s1))
-      (is (= 22 w1))
-      (is (= "[:p1 5;\n    a:p2 \"t1\", \"t2\";\n    <http://ugh.com/> 11]" s2))
-      (is (= 25 w2))
-      (is (= "[:p1 [];\n a:p2 [x:y 4], \"t2\";\n a:c 11]" s3))
-      (is (= 8 w3))
-      (is (= "[:p1 [];\n a:p2 [x:y 5; x:z 6], [x:y 4];\n a:c 11]" s4))
-      (is (= 8 w4)))))
+    (binding [ttl/*space-flag* (volatile! false)]
+      (let [[s0 w0] (write #'ttl/write-blank-object! {} 0)
+            [s1 w1] (write #'ttl/write-blank-object!
+                           {:p1 5, :a/p2 #{"t1" "t2"}, (uri "http://ugh.com/") 11} 0)
+            [s2 w2] (write #'ttl/write-blank-object!
+                           {:p1 5, :a/p2 #{"t1" "t2"}, (uri "http://ugh.com/") 11} 3)
+            [s3 w3] (write #'ttl/write-blank-object!
+                           {:p1 {}, :a/p2 #{{:x/y 4} "t2"}, :a/c 11} 0)
+            [s4 w4] (write #'ttl/write-blank-object!
+                           {:p1 {}, :a/p2 #{{:x/y 4} {:x/y 5 :x/z 6}}, :a/c 11} 0)]
+        (is (= "[]" s0))
+        (is (= 2 w0))
+        (is (= "[:p1 5;\n a:p2 \"t1\", \"t2\";\n <http://ugh.com/> 11]" s1))
+        (is (= 22 w1))
+        (is (= "[:p1 5;\n    a:p2 \"t1\", \"t2\";\n    <http://ugh.com/> 11]" s2))
+        (is (= 25 w2))
+        (is (= "[:p1 [];\n a:p2 [x:y 4], \"t2\";\n a:c 11]" s3))
+        (is (= 8 w3))
+        (is (= "[:p1 [];\n a:p2 [x:y 5; x:z 6], [x:y 4];\n a:c 11]" s4))
+        (is (= 8 w4))))))
 
 (deftest entity
   (testing "Writing entities"
@@ -160,54 +161,55 @@
 
 (deftest test-po
   (testing "Internal method of predicate/object(s) pairs"
-    (let [[s0 w0] (write #(#'ttl/write-po! %1 :p1 %2 %3) #{"data a" "data b"} 0)
-          [s1 w1] (write #(#'ttl/write-po! %1 :p1 %2 %3) #{"data a" "data b"} 3)
-          [s2 w2] (write #(#'ttl/write-po! %1 (uri "http://ex.com/") %2 %3)
-                         #{1 2 3 4 5 6 7 8 9 10 11} 0)
-          [s3 w3] (write #(#'ttl/write-po! %1 (uri "http://ex.com/") %2 %3)
-                         #{1 2 3 4 5 6 7 8 9 10 11} 3)
-          [s4 w4] (write #(#'ttl/write-po! %1 (uri "http://ex.com/") %2 %3)
-                         '(1 2 3 4 5 6 7 8 9) 0)
-          [s5 w5] (write #(#'ttl/write-po! %1 (uri "http://ex.com/") %2 %3)
-                         [1 2 3 4 5 6 7 8 9] 3)
-          [s6 w6] (write #(#'ttl/write-po! %1 :p1 %2 %3) ["a" "b"] 3)
-          [s7 w7] (write #(#'ttl/write-po! %1 (uri (str "http://twenty.com/" (digits 90))) %2 %3)
-                         (d/ordered-set 1 2 3 4 5 6 7 8 99 10 11 12) 0)
-          [s8 w8] (write #(#'ttl/write-po! %1 (uri (str "http://twenty.com/" (digits 90))) %2 %3)
-                         (d/ordered-set "123456789012345" "1" "23" "45" "67" "8" "901" "234") 0)]
-      (is (= ":p1 \"data a\", \"data b\"" s0))
-      (is (= 22 w0))
-      (is (= ":p1 \"data a\", \"data b\"" s1))
-      (is (= 25 w1))
-      (is (= (str "<http://ex.com/> 7, 1, 4, 6, 3,\n"
-                  "                 2, 11, 9, 5, 10,\n"
-                  "                 8") s2))
-      (is (= 18 w2))
-      (is (= (str "<http://ex.com/> 7, 1, 4, 6, 3,\n"
-                  "                    2, 11, 9, 5, 10,\n"
-                  "                    8") s3))
-      (is (= 21 w3))
-      (is (= (str "<http://ex.com/> (1 2 3 4 5\n"
-                  "                  6 7 8 9)") s4))
-      (is (= 26 w4))
-      (is (= (str "<http://ex.com/> (1 2 3 4 5\n"
-                  "                     6 7 8 9)") s5))
-      (is (= 29 w5))
-      (is (= ":p1 (\"a\" \"b\")" s6))
-      (is (= 16 w6))
-      (is (= (str "<http://twenty.com/" (digits 90) "> 1, 2, 3,\n"
-                  (spaces 111) "4, 5, 6,\n"
-                  (spaces 111) "7, 8, 99,\n"
-                  (spaces 111) "10, 11,\n"
-                  (spaces 111) "12") s7))
-      (is (= 113 w7))
-      (is (= (str "<http://twenty.com/" (digits 90) "> \"123456789012345\",\n"
-                  (spaces 111) "\"1\", \"23\",\n"
-                  (spaces 111) "\"45\",\n"
-                  (spaces 111) "\"67\", \"8\",\n"
-                  (spaces 111) "\"901\",\n"
-                  (spaces 111) "\"234\"") s8))
-      (is (= 116 w8)))))
+    (binding [ttl/*space-flag* (volatile! false)]
+      (let [[s0 w0] (write #(#'ttl/write-po! %1 :p1 %2 %3) #{"data a" "data b"} 0)
+            [s1 w1] (write #(#'ttl/write-po! %1 :p1 %2 %3) #{"data a" "data b"} 3)
+            [s2 w2] (write #(#'ttl/write-po! %1 (uri "http://ex.com/") %2 %3)
+                           #{1 2 3 4 5 6 7 8 9 10 11} 0)
+            [s3 w3] (write #(#'ttl/write-po! %1 (uri "http://ex.com/") %2 %3)
+                           #{1 2 3 4 5 6 7 8 9 10 11} 3)
+            [s4 w4] (write #(#'ttl/write-po! %1 (uri "http://ex.com/") %2 %3)
+                           '(1 2 3 4 5 6 7 8 9) 0)
+            [s5 w5] (write #(#'ttl/write-po! %1 (uri "http://ex.com/") %2 %3)
+                           [1 2 3 4 5 6 7 8 9] 3)
+            [s6 w6] (write #(#'ttl/write-po! %1 :p1 %2 %3) ["a" "b"] 3)
+            [s7 w7] (write #(#'ttl/write-po! %1 (uri (str "http://twenty.com/" (digits 90))) %2 %3)
+                           (d/ordered-set 1 2 3 4 5 6 7 8 99 10 11 12) 0)
+            [s8 w8] (write #(#'ttl/write-po! %1 (uri (str "http://twenty.com/" (digits 90))) %2 %3)
+                           (d/ordered-set "123456789012345" "1" "23" "45" "67" "8" "901" "234") 0)]
+        (is (= ":p1 \"data a\", \"data b\"" s0))
+        (is (= 22 w0))
+        (is (= ":p1 \"data a\", \"data b\"" s1))
+        (is (= 25 w1))
+        (is (= (str "<http://ex.com/> 7, 1, 4, 6, 3,\n"
+                    "                 2, 11, 9, 5, 10,\n"
+                    "                 8") s2))
+        (is (= 18 w2))
+        (is (= (str "<http://ex.com/> 7, 1, 4, 6, 3,\n"
+                    "                    2, 11, 9, 5, 10,\n"
+                    "                    8") s3))
+        (is (= 21 w3))
+        (is (= (str "<http://ex.com/> (1 2 3 4 5\n"
+                    "                  6 7 8 9)") s4))
+        (is (= 26 w4))
+        (is (= (str "<http://ex.com/> (1 2 3 4 5\n"
+                    "                     6 7 8 9)") s5))
+        (is (= 29 w5))
+        (is (= ":p1 (\"a\" \"b\")" s6))
+        (is (= 16 w6))
+        (is (= (str "<http://twenty.com/" (digits 90) "> 1, 2, 3,\n"
+                    (spaces 111) "4, 5, 6,\n"
+                    (spaces 111) "7, 8, 99,\n"
+                    (spaces 111) "10, 11,\n"
+                    (spaces 111) "12") s7))
+        (is (= 113 w7))
+        (is (= (str "<http://twenty.com/" (digits 90) "> \"123456789012345\",\n"
+                    (spaces 111) "\"1\", \"23\",\n"
+                    (spaces 111) "\"45\",\n"
+                    (spaces 111) "\"67\", \"8\",\n"
+                    (spaces 111) "\"901\",\n"
+                    (spaces 111) "\"234\"") s8))
+        (is (= 116 w8))))))
 
 (defn spaces [n] (apply str (repeat n \space)))
 
@@ -322,6 +324,8 @@
                    (fwrite ttl/write-triple! :ex/_1 (uri "http://ex.com/p") 5.0)))
        :cljs (is (= "ex:_1 <http://ex.com/p> 5.1.\n"
               (fwrite ttl/write-triple! :ex/_1 (uri "http://ex.com/p") 5.1))))
+    (is (= "ex:_1 <http://ex.com/p> 5 .\n"
+           (fwrite ttl/write-triple! :ex/_1 (uri "http://ex.com/p") 5)))
     (is (= "[a data:Class; b:data data:_123] data:rel [a data:Class; b:data data:_246].\n"
            (fwrite ttl/write-triple!
                    {:a :data/Class
@@ -353,20 +357,20 @@
 (deftest test-triples
   (testing "Writing subject with property/objects"
     ;; NOTE: the following depends on the ordering of hashsets
-    (is (= "ns:_inst :p1 \"data a\", \"data b\";\n         <http://ex.com/> 5.\n\n"
+    (is (= "ns:_inst :p1 \"data a\", \"data b\";\n         <http://ex.com/> 5 .\n\n"
            (fwrite ttl/write-triples! :ns/_inst {:p1 #{"data a" "data b"}
                                                  (uri "http://ex.com/") 5})))
     (is (= (str "ns:_inst :p1 \"data a\", \"data b\";\n"
                 "         <http://ex.com/> 7, 1, 4, 6, 3,\n"
                 "                          2, 11, 9, 5, 10,\n"
-                "                          8.\n\n")
+                "                          8 .\n\n")
            (fwrite ttl/write-triples! :ns/_inst {:p1 #{"data a" "data b"}
                                                  (uri "http://ex.com/") #{1 2 3 4 5 6 7 8 9 10 11}})))
     (is (= (str "ns:_inst :p1 \"data a\", \"data b\";\n"
                 "         <http://ex.com/> 7, 1, 4,\n"
                 "                          6, 3, 2,\n"
                 "                          11, 9, 5,\n"
-                "                          10, 8.\n\n")
+                "                          10, 8 .\n\n")
            (binding [ttl/*list-limit* 3]
              (fwrite ttl/write-triples! :ns/_inst {:p1 #{"data a" "data b"}
                                                    (uri "http://ex.com/") #{1 2 3 4 5 6 7 8 9 10 11}}))))
@@ -382,7 +386,7 @@
              (fwrite ttl/write-triples! :ns/_inst {(uri "http://ex.com/") #{{:v 1} {:v 2} {:v 3} {:v 4}
                                                                              {:v 5} {:v 6}}}))))
     (is (= (str "[a data:Class; b:data data:_123] :p1 \"data a\", \"data b\";\n"
-                "                                 <http://ex.com/> 5.\n\n")
+                "                                 <http://ex.com/> 5 .\n\n")
            (fwrite ttl/write-triples!
                    {:a :data/Class
                     :b/data :data/_123}
@@ -392,7 +396,7 @@
                 " b:data data:_123;\n"
                 " b:more [a data:Inner;\n"
                 "         b:list (1 2 3)]] :p1 \"data a\", \"data b\";\n"
-                "                          <http://ex.com/> 5.\n\n")
+                "                          <http://ex.com/> 5 .\n\n")
            (fwrite ttl/write-triples!
                    {:a :data/Class
                     :b/data :data/_123
@@ -409,7 +413,7 @@
 (deftest test-triples-map
   (testing "Writing a nested map"
     (is (= (str "ns:_inst1 :p1 \"data a\", \"data b\";\n"
-                "          <http://ex.com/> 5.\n\n"
+                "          <http://ex.com/> 5 .\n\n"
                 "d:data :p2 d:value;\n"
                 "       :p3 4, 5;\n"
                 "       d:p x:y.\n\n")

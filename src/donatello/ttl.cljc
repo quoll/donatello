@@ -33,6 +33,12 @@
 ;; Whether or not to include the `default-prefixes` in an output document
 (def ^:dynamic *include-defaults* true)
 
+;; Indicates if the last object written needs a space before a line terminator
+(def ^:dynamic *space-flag* nil)
+
+;; Whether to include extra whitespace to correct for the Neptune parser that not conforming to the spec
+(def ^:dynamic *neptune* false)
+
 (def default-prefixes
   (ordered-map
    :rdf (common-prefixes :rdf)
@@ -156,12 +162,6 @@
      object
      (serialize [v] (str v))
 
-     number
-     (serialize [v] (str v))
-
-     boolean
-     (serialize [v] (str v))
-
      string
      (serialize [v] (str \" (rdf/print-escape v) \"))
 
@@ -225,6 +225,17 @@
 
 
 (declare write-entity! write-po! write-blank-object!)
+
+(defn- check-object!
+  "Checks if a written object needs a space before a line terminator"
+  [o]
+  (vreset! *space-flag* (or (int? o)
+                            (and *neptune* (boolean? o)))))
+
+(defn- clear-space-flag!
+  "Clears the last object space flag"
+  []
+  (vreset! *space-flag* false))
 
 (defn- write-list!
   "Writes a sequence as an rdf:List object.
@@ -368,13 +379,17 @@
                                       (or (>= ocount *list-limit*)
                                           (> (+ last-indent sl 2) *soft-max-width*)))]
                     (-write out s)
+                    (check-object! o1)
                     (recur r1 (long newcount) (+ n sl) false))
                   (let [[n newcount] (write-spacing! (or (>= ocount *list-limit*)
                                                          (and last-obj?
                                                               (>= ocount *object-list-limit*))))]
+                    (clear-space-flag!)
                     (recur r1 (long newcount) (write-entity! out o1 n) true))))
               last-indent))))
-      (write-entity! out o (+ ind pwidth 1)))))
+      (do
+        (check-object! o)
+        (write-entity! out o (+ ind pwidth 1))))))
 
 (defn write-triples!
   "Writes the triples for a single subject, as a group.
@@ -385,16 +400,21 @@
    subj: The subject to write triples for.
    property-map: A map of properties to values, or collections of values."
   [out subj property-map]
-  (let [w (write-entity! out subj)
-        newline-indent (apply str \newline (repeat (inc w) \space))
-        sp (str ";" newline-indent)]
-    (-write-char out \space)
-    (let [indent (inc w)
-          [[p o] & props] property-map]
-      (write-po! out p o indent)
-      (doseq [[p o] props]
-        (-write out sp)
-        (write-po! out p o indent))))
+  (binding [*space-flag* (volatile! false)]
+    (let [w (write-entity! out subj)
+          newline-indent (apply str \newline (repeat (inc w) \space))
+          sp (str ";" newline-indent)]
+      (-write-char out \space)
+      (let [indent (inc w)
+            [[p o] & props] property-map]
+        (write-po! out p o indent)
+        (doseq [[p o] props]
+          (-write out sp)
+          (clear-space-flag!)
+          (write-po! out p o indent))))
+    (when @*space-flag*
+      (-write-char out \space)
+      (clear-space-flag!)))
   (-write out ".\n\n"))
 
 (defn write-triple!
@@ -404,14 +424,18 @@
    pred: The predicate of the triple.
    obj: The object of the triple."
   [out subj pred obj]
-  (let [w (write-entity! out subj)
-        p (serialize pred)
-        w2 (+ 2 (count p) w)]
-    (-write-char out \space)
-    (-write out p)
-    (-write-char out \space)
-    (write-entity! out obj w2)
-    (-write out ".\n")))
+  (binding [*space-flag* (volatile! false)]
+    (let [w (write-entity! out subj)
+          p (serialize pred)
+          w2 (+ 2 (count p) w)]
+      (-write-char out \space)
+      (-write out p)
+      (-write-char out \space)
+      (write-entity! out obj w2)
+      (check-object! obj)
+      (when @*space-flag*
+        (-write-char out \space))
+      (-write out ".\n"))))
 
 (defn write-triples-map!
   "Writes to a stream a nested map of subjects to maps of predicates to objects.
@@ -427,7 +451,11 @@
    out: The object stream to write to.
    e: The entity to write"
   [out e]
-  (write-entity! out e)
+  (binding [*space-flag* (volatile! false)]
+    (write-entity! out e)
+    (when @*space-flag*
+      (-write-char out \space)
+      (clear-space-flag!)))
   (-write out ".\n\n"))
 
 #?(:clj
