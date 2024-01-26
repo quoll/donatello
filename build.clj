@@ -5,7 +5,7 @@
 
 (def pom "build-rsc/pom.xml")
 (def lib 'org.clojars.quoll/donatello)
-(def version "1.3.4")
+(def version "1.3.5")
 
 ;; clojure -T:build test
 (defn test "Run the tests." [opts]
