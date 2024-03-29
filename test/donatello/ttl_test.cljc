@@ -278,6 +278,7 @@
 
 (def default-ns "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n")
 (def p1 "@prefix ns1: <http://demo.org/ns1/> .\n@prefix ns2: <http://ex.com/ns2#> .\n")
+(def p2 "@prefix : <http://example.org/> .\n")
 (def updated-ns "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n@prefix ns1: <http://demo.org/ns1/> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix ns2: <http://ex.com/ns2#> .\n\n")
 
 (deftest test-base
@@ -294,6 +295,10 @@
     (is (= (str default-ns p1 \newline)
            (fwrite ttl/write-prefixes! {:ns1 "http://demo.org/ns1/"
                                        :ns2 "http://ex.com/ns2#"})))
+    (is (= (str default-ns p2 \newline)
+           (fwrite ttl/write-prefixes! {"" "http://example.org/"})))
+    (is (= (str default-ns p2 \newline)
+           (fwrite ttl/write-prefixes! {(keyword "") "http://example.org/"})))
     (is (= updated-ns
            (fwrite ttl/write-prefixes! {:ns1 "http://demo.org/ns1/"
                                         :rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
