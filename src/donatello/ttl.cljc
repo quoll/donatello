@@ -165,6 +165,12 @@
      string
      (serialize [v] (str \" (rdf/print-escape v) \"))
 
+     number
+     (serialize [v] (str v))
+
+     boolean
+     (serialize [v] (str v))
+
      Uri 
      (serialize [v] (uri-output v (boolean (seq (.getDomain v)))))
 
