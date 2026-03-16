@@ -125,7 +125,9 @@
             [s3 w3] (write #'ttl/write-blank-object!
                            {:p1 {}, :a/p2 #{{:x/y 4} "t2"}, :a/c 11} 0)
             [s4 w4] (write #'ttl/write-blank-object!
-                           {:p1 {}, :a/p2 #{{:x/y 4} {:x/y 5 :x/z 6}}, :a/c 11} 0)]
+                           {:p1 {}, :a/p2 #{{:x/y 4} {:x/y 5 :x/z 6}}, :a/c 11} 0)
+            [s5 w5] (write #'ttl/write-blank-object!
+                           {:p1 (rdf/typed-literal "code" :xsd/token)} 0)]
         (is (= "[]" s0))
         (is (= 2 w0))
         (is (= "[:p1 5;\n a:p2 \"t1\", \"t2\";\n <http://ugh.com/> 11]" s1))
@@ -135,7 +137,9 @@
         (is (= "[:p1 [];\n a:p2 [x:y 4], \"t2\";\n a:c 11]" s3))
         (is (= 8 w3))
         (is (= "[:p1 [];\n a:p2 [x:y 5; x:z 6], [x:y 4];\n a:c 11]" s4))
-        (is (= 8 w4))))))
+        (is (= 8 w4))
+        (is (= "[:p1 \"code\"^^xsd:token]" s5))
+        (is (= 23 w5))))))
 
 (deftest entity
   (testing "Writing entities"

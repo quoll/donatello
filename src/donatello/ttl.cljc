@@ -287,7 +287,7 @@
         pred (serialize p)]
     (-write out pred)
     (-write-char out \space)
-    (let [ob-len (if (map? o)
+    (let [ob-len (if-not (satisfies? Serializable o)
                    (write-blank-object! out o 0)
                    (let [ob (serialize o)]
                      (-write out ob)
